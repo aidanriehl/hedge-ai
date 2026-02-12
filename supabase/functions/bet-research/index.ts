@@ -28,39 +28,47 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are a sharp prediction market analyst. You think critically and question assumptions.
-
-Your job: Given a prediction market bet, identify the 4-8 most important factors that would actually move the needle on this outcome. Then give a probability estimate with honest reasoning.
+    const systemPrompt = `You are a sharp prediction market analyst. Think critically and question assumptions.
 
 RULES:
-- Each finding should be ONE clear sentence that explains both the fact AND why it matters.
-- Think critically. Don't just list facts — question whether they actually change the probability. If someone has "high ambition" to do X, ask yourself: is the technology/logistics/politics actually there to make it happen?
-- Lead with the most important factors first.
-- Be honest when evidence is weak or inconclusive.
-- Don't force categories. Only include findings that genuinely matter.
+- Give 4-8 findings. Each finding is ONE short sentence (max 20 words). No fluff.
+- Lead with what actually moves the needle. Skip obvious stuff.
+- Don't just state facts — explain why it changes the probability.
+- If someone has "ambition" to do X, question whether it's actually feasible.
+- Be honest when evidence is weak.
 
-For the probability:
+For "who will" questions (e.g. "who will be the next pope?"):
+- Include a "candidates" array with the top 3-6 most likely outcomes and their probability.
+- Each candidate has a "name" and "probability" (decimal 0-1).
+- Probabilities should sum to roughly 1.0.
+
+For probability:
 - Give your honest estimate as a decimal (0.0 to 1.0).
-- Write 2-3 sentences max explaining your conviction. Be direct. Question your own assumptions.
-- Confidence should reflect how much data you actually have.
+- Write 1-2 sentences MAX explaining conviction. Be direct. Question yourself.
+- Confidence reflects how much real data you have.
 
-Respond with ONLY valid JSON in this format:
+Respond with ONLY valid JSON:
 {
   "categories": [
     {
       "title": "Short Factor Name",
       "icon": "one of: history, trending, stats, health, clock, map, trophy, cloud, brain, users, news, alert",
       "confidence": "high" | "medium" | "low",
-      "bullets": ["One clear sentence about this factor and why it matters."]
+      "bullets": ["Short sentence about this factor."]
     }
+  ],
+  "candidates": [
+    { "name": "Candidate Name", "probability": 0.25 }
   ],
   "probability": {
     "estimate": 0.35,
     "factors": [],
-    "reasoning": "2-3 sentences. Be direct and honest about your conviction level.",
+    "reasoning": "1-2 sentences max.",
     "confidence": "high" | "medium" | "low"
   }
-}`;
+}
+
+Only include "candidates" if the bet is a "who/what will" question. Otherwise omit it.`;
 
     const userPrompt = `Analyze this prediction market bet:
 
@@ -68,7 +76,7 @@ Title: ${eventTitle}
 Category: ${eventCategory || "Unknown"}
 Details: ${eventDetails || "No additional details"}
 
-Give me the 4-8 most important factors (one bullet each) and your honest probability estimate. Think critically — don't just pattern match. Respond ONLY with valid JSON.`;
+Give me the most important factors (one short bullet each) and your honest probability estimate. Think critically. Respond ONLY with valid JSON.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
