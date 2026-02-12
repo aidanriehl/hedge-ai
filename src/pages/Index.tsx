@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Search, Bookmark, TrendingUp } from "lucide-react";
+import { ArrowLeft, Bookmark, TrendingUp } from "lucide-react";
 import { SearchScreen } from "@/components/SearchScreen";
 import { ResearchResult as ResearchResultView } from "@/components/ResearchResult";
 import { ResearchProgress } from "@/components/ResearchProgress";
-import { fetchKalshiEvents, runBetResearch } from "@/lib/api";
+import { fetchKalshiEvents, fetchEventMarkets, runBetResearch } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import type { KalshiEvent, ResearchResult } from "@/types/kalshi";
 
@@ -13,6 +13,7 @@ const Index = () => {
   const [selectedEvent, setSelectedEvent] = useState<KalshiEvent | null>(null);
   const [researching, setResearching] = useState(false);
   const [research, setResearch] = useState<ResearchResult | null>(null);
+  const [marketPrice, setMarketPrice] = useState<number | undefined>(undefined);
   const [tab, setTab] = useState<"saved" | "search">("search");
   const [savedTickers, setSavedTickers] = useState<Set<string>>(() => {
     const stored = localStorage.getItem("betscope_saved");
@@ -49,12 +50,27 @@ const Index = () => {
     setSelectedEvent(event);
     setResearch(null);
     setResearching(true);
+    setMarketPrice(undefined);
+
+    // Fetch market price in parallel
+    let price: number | undefined;
+    try {
+      const details = await fetchEventMarkets(event.event_ticker);
+      const market = details.markets?.[0];
+      if (market?.yes_bid != null) {
+        price = market.yes_bid;
+        setMarketPrice(price);
+      }
+    } catch (e) {
+      console.error("Could not fetch market price:", e);
+    }
 
     try {
       const result = await runBetResearch(
         event.title,
         event.category || "General",
-        event.sub_title || ""
+        event.sub_title || "",
+        price
       );
       setResearch(result);
     } catch (err: any) {
@@ -73,6 +89,7 @@ const Index = () => {
     setSelectedEvent(null);
     setResearch(null);
     setResearching(false);
+    setMarketPrice(undefined);
   }
 
   function toggleSave(ticker: string) {
@@ -88,7 +105,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background safe-top safe-bottom">
-      {/* Research view */}
       {selectedEvent ? (
         <>
           <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-xl border-b border-border">
@@ -109,16 +125,18 @@ const Index = () => {
           </header>
           <main className="max-w-lg mx-auto px-4 py-4 space-y-4">
             <div className="pb-2">
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{selectedEvent.category}</p>
+              <p className="text-xs text-primary font-semibold uppercase tracking-wide">{selectedEvent.category}</p>
               <h2 className="text-xl font-bold text-foreground mt-1 leading-tight">{selectedEvent.title}</h2>
+              {marketPrice != null && (
+                <p className="text-sm text-muted-foreground mt-1">Market: <span className="font-semibold text-foreground">{Math.round(marketPrice * 100)}¢ Yes</span></p>
+              )}
             </div>
             {researching && <ResearchProgress />}
-            {research && <ResearchResultView research={research} />}
+            {research && <ResearchResultView research={research} marketPrice={marketPrice} />}
           </main>
         </>
       ) : (
         <>
-          {/* Header */}
           <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-xl border-b border-border">
             <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
               <h1 className="text-lg font-bold text-foreground">BetScope</h1>
@@ -158,7 +176,6 @@ const Index = () => {
             )}
           </main>
 
-          {/* Bottom tab bar */}
           <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/90 backdrop-blur-xl border-t border-border safe-bottom">
             <div className="max-w-lg mx-auto flex">
               <button

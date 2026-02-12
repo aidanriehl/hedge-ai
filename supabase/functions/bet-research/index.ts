@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { eventTitle, eventCategory, eventDetails } = await req.json();
+    const { eventTitle, eventCategory, eventDetails, marketPrice } = await req.json();
 
     if (!eventTitle) {
       return new Response(
@@ -28,35 +28,34 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are a sharp prediction market analyst. Think critically and question assumptions.
+    const systemPrompt = `You are a prediction market analyst writing for a general audience. Use simple, clear language — no jargon, no filler. Write like you're explaining to a smart 8th grader.
 
 RULES:
-- Give 4-8 findings grouped into 2-4 categories. Each finding is ONE sentence with SPECIFIC data, numbers, or names. No vague platitudes.
-- BAD: "Aggressive rate hikes could quickly accelerate unemployment." 
-- GOOD: "Fed has hiked rates 11 times since 2022, fastest pace since 1980s — historically triggers recession within 18 months."
-- Each category has a short title (2-3 words) and 1-3 specific bullets.
-- Lead with what actually moves the needle. Skip obvious stuff.
-- If someone has "ambition" to do X, question whether it's actually feasible.
-- Be honest when evidence is weak.
+- Give 4-8 findings grouped into 2-4 categories.
+- Each finding is ONE sentence with a **specific** number, date, or name. No vague statements.
+- Wrap the single most important phrase in each bullet with **bold** markdown. Don't overdo it — max one bold per bullet.
+- BAD: "Aggressive rate hikes could quickly accelerate unemployment."
+- GOOD: "The Fed raised rates **11 times since 2022**, the fastest pace since the 1980s — historically, that leads to a recession within 18 months."
+- Lead with what actually matters. Skip obvious stuff.
+- If someone claims they want to do something, question whether they actually can.
+- Be honest when the evidence is weak.
 
 QUESTION TYPE HANDLING:
 1. "Who/what will" questions (e.g. "who will be the next pope?"):
-   - Include a "candidates" array with the top 3-6 most likely outcomes and their probability.
-   - Each candidate has a "name" and "probability" (decimal 0-1).
-   - Probabilities should sum to roughly 1.0.
-   - The main probability.estimate should reflect the MOST LIKELY single candidate's chance.
+   - Include a "candidates" array with top 3-6 most likely outcomes.
+   - Each has "name" and "probability" (decimal 0-1).
+   - Probabilities MUST add up to exactly 1.0 (100%). Include an "Other" catch-all if needed.
 
 2. "How high/how much/how many" questions (e.g. "how high will unemployment get?"):
-   - Include a "thresholds" array with 3-5 key levels and their probability.
-   - Each threshold has a "level" (string like "Above 5%") and "probability" (decimal 0-1).
-   - The main probability.estimate should reflect the MOST DISCUSSED threshold.
+   - Include a "thresholds" array with 3-5 key levels.
+   - Each has "level" (like "Above 5%") and "probability" (decimal 0-1).
 
 3. Simple yes/no questions: just give probability normally.
 
 For probability:
-- Give your honest estimate as a decimal (0.0 to 1.0).
-- Write 1-2 sentences MAX explaining conviction. Be direct. Question yourself.
-- Confidence reflects how much real data you have.
+- estimate is a decimal (0.0 to 1.0) for the YES outcome.
+- reasoning: 1 sentence, MAX 2. Plain English. Question yourself. No jargon.
+- confidence: how much real data backs this up.
 
 Respond with ONLY valid JSON:
 {
@@ -65,11 +64,11 @@ Respond with ONLY valid JSON:
       "title": "Short Label",
       "icon": "one of: history, trending, stats, health, clock, map, trophy, cloud, brain, users, news, alert",
       "confidence": "high" | "medium" | "low",
-      "bullets": ["Specific finding with data.", "Another specific finding."]
+      "bullets": ["One sentence with **key phrase bolded** and specific data."]
     }
   ],
   "candidates": [
-    { "name": "Candidate Name", "probability": 0.25 }
+    { "name": "Name", "probability": 0.30 }
   ],
   "thresholds": [
     { "level": "Above 5%", "probability": 0.60 }
@@ -77,13 +76,14 @@ Respond with ONLY valid JSON:
   "probability": {
     "estimate": 0.35,
     "factors": [],
-    "reasoning": "1-2 sentences max.",
+    "reasoning": "1 sentence max. Plain English.",
     "confidence": "high" | "medium" | "low"
-  }
+  },
+  "imagePrompt": "A short description of a relevant photo for this bet, like 'portrait of Johnny Depp as Captain Jack Sparrow' or 'US unemployment office line'. Make it specific and visual."
 }
 
-Only include "candidates" if the bet is a "who/what will" question.
-Only include "thresholds" if the bet is a "how high/how much/how many" question.
+Only include "candidates" for "who/what will" questions.
+Only include "thresholds" for "how high/much/many" questions.
 Otherwise omit both.`;
 
     const userPrompt = `Analyze this prediction market bet:
@@ -91,8 +91,9 @@ Otherwise omit both.`;
 Title: ${eventTitle}
 Category: ${eventCategory || "Unknown"}
 Details: ${eventDetails || "No additional details"}
+${marketPrice != null ? `Current market price (YES): ${Math.round(marketPrice * 100)}%` : ""}
 
-Give me the most important factors (one short bullet each) and your honest probability estimate. Think critically. Respond ONLY with valid JSON.`;
+Give me the key factors (one short bullet each with specific data) and your honest probability estimate. Write simply. Respond ONLY with valid JSON.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -145,6 +146,37 @@ Give me the most important factors (one short bullet each) and your honest proba
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Generate image if we got an imagePrompt
+    let imageUrl = null;
+    if (research.imagePrompt) {
+      try {
+        const imgResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash-image",
+            messages: [
+              { role: "user", content: `Generate a photorealistic image: ${research.imagePrompt}. High quality, editorial style.` },
+            ],
+            modalities: ["image", "text"],
+          }),
+        });
+
+        if (imgResponse.ok) {
+          const imgData = await imgResponse.json();
+          imageUrl = imgData.choices?.[0]?.message?.images?.[0]?.image_url?.url || null;
+        }
+      } catch (imgErr) {
+        console.error("Image generation failed (non-fatal):", imgErr);
+      }
+    }
+
+    research.imageUrl = imageUrl;
+    delete research.imagePrompt;
 
     return new Response(JSON.stringify(research), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

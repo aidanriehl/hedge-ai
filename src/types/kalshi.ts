@@ -61,4 +61,5 @@ export interface ResearchResult {
   probability: ProbabilityEstimate;
   candidates?: Candidate[];
   thresholds?: Threshold[];
+  imageUrl?: string | null;
 }
