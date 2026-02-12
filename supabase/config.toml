@@ -1,0 +1,7 @@
+project_id = "jdzzpahtgcbrdiajxuez"
+
+[functions.kalshi-proxy]
+verify_jwt = false
+
+[functions.bet-research]
+verify_jwt = false
