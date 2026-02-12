@@ -55,6 +55,12 @@ export function SearchScreen({ events, isLoading, onSelectEvent }: Props) {
 
   return (
     <div className="space-y-5 pb-20">
+      {/* Headline */}
+      <div className="pt-1 pb-2">
+        <h2 className="text-2xl font-bold text-foreground">Explore Markets</h2>
+        <p className="text-sm text-muted-foreground mt-1">AI-powered research on prediction markets</p>
+      </div>
+
       {/* Search bar */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -90,7 +96,7 @@ export function SearchScreen({ events, isLoading, onSelectEvent }: Props) {
               <span className="text-xs text-muted-foreground/50">{catEvents.length}</span>
             </div>
             <div className="space-y-1.5">
-              {catEvents.slice(0, query ? 10 : 4).map((event) => (
+              {catEvents.slice(0, query ? 10 : 2).map((event) => (
                 <button
                   key={event.event_ticker}
                   onClick={() => onSelectEvent(event)}
@@ -99,8 +105,8 @@ export function SearchScreen({ events, isLoading, onSelectEvent }: Props) {
                   <p className="font-medium text-foreground text-[14px] leading-snug">{event.title}</p>
                 </button>
               ))}
-              {!query && catEvents.length > 4 && (
-                <p className="text-xs text-muted-foreground pl-4 py-1">+{catEvents.length - 4} more</p>
+              {!query && catEvents.length > 2 && (
+                <p className="text-xs text-muted-foreground pl-4 py-1">+{catEvents.length - 2} more</p>
               )}
             </div>
           </div>

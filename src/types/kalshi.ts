@@ -51,8 +51,14 @@ export interface Candidate {
   probability: number;
 }
 
+export interface Threshold {
+  level: string;
+  probability: number;
+}
+
 export interface ResearchResult {
   categories: ResearchCategory[];
   probability: ProbabilityEstimate;
   candidates?: Candidate[];
+  thresholds?: Threshold[];
 }
