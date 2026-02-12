@@ -46,7 +46,13 @@ export interface ProbabilityEstimate {
   confidence: "high" | "medium" | "low";
 }
 
+export interface Candidate {
+  name: string;
+  probability: number;
+}
+
 export interface ResearchResult {
   categories: ResearchCategory[];
   probability: ProbabilityEstimate;
+  candidates?: Candidate[];
 }
