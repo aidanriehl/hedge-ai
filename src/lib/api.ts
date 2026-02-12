@@ -10,13 +10,22 @@ export async function fetchKalshiEvents(cursor?: string): Promise<{ events: Kals
   return { events: data?.events || [], cursor: data?.cursor || "" };
 }
 
+export async function fetchEventMarkets(eventTicker: string): Promise<KalshiEvent> {
+  const { data, error } = await supabase.functions.invoke("kalshi-proxy", {
+    body: { path: `/events/${eventTicker}` },
+  });
+  if (error) throw new Error(error.message || "Failed to fetch event details");
+  return data?.event as KalshiEvent;
+}
+
 export async function runBetResearch(
   eventTitle: string,
   eventCategory: string,
-  eventDetails: string
+  eventDetails: string,
+  marketPrice?: number
 ): Promise<ResearchResult> {
   const { data, error } = await supabase.functions.invoke("bet-research", {
-    body: { eventTitle, eventCategory, eventDetails },
+    body: { eventTitle, eventCategory, eventDetails, marketPrice },
   });
 
   if (error) throw new Error(error.message || "Research failed");
