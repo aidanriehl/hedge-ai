@@ -31,16 +31,27 @@ serve(async (req) => {
     const systemPrompt = `You are a sharp prediction market analyst. Think critically and question assumptions.
 
 RULES:
-- Give 4-8 findings. Each finding is ONE short sentence (max 20 words). No fluff.
+- Give 4-8 findings grouped into 2-4 categories. Each finding is ONE sentence with SPECIFIC data, numbers, or names. No vague platitudes.
+- BAD: "Aggressive rate hikes could quickly accelerate unemployment." 
+- GOOD: "Fed has hiked rates 11 times since 2022, fastest pace since 1980s — historically triggers recession within 18 months."
+- Each category has a short title (2-3 words) and 1-3 specific bullets.
 - Lead with what actually moves the needle. Skip obvious stuff.
-- Don't just state facts — explain why it changes the probability.
 - If someone has "ambition" to do X, question whether it's actually feasible.
 - Be honest when evidence is weak.
 
-For "who will" questions (e.g. "who will be the next pope?"):
-- Include a "candidates" array with the top 3-6 most likely outcomes and their probability.
-- Each candidate has a "name" and "probability" (decimal 0-1).
-- Probabilities should sum to roughly 1.0.
+QUESTION TYPE HANDLING:
+1. "Who/what will" questions (e.g. "who will be the next pope?"):
+   - Include a "candidates" array with the top 3-6 most likely outcomes and their probability.
+   - Each candidate has a "name" and "probability" (decimal 0-1).
+   - Probabilities should sum to roughly 1.0.
+   - The main probability.estimate should reflect the MOST LIKELY single candidate's chance.
+
+2. "How high/how much/how many" questions (e.g. "how high will unemployment get?"):
+   - Include a "thresholds" array with 3-5 key levels and their probability.
+   - Each threshold has a "level" (string like "Above 5%") and "probability" (decimal 0-1).
+   - The main probability.estimate should reflect the MOST DISCUSSED threshold.
+
+3. Simple yes/no questions: just give probability normally.
 
 For probability:
 - Give your honest estimate as a decimal (0.0 to 1.0).
@@ -51,14 +62,17 @@ Respond with ONLY valid JSON:
 {
   "categories": [
     {
-      "title": "Short Factor Name",
+      "title": "Short Label",
       "icon": "one of: history, trending, stats, health, clock, map, trophy, cloud, brain, users, news, alert",
       "confidence": "high" | "medium" | "low",
-      "bullets": ["Short sentence about this factor."]
+      "bullets": ["Specific finding with data.", "Another specific finding."]
     }
   ],
   "candidates": [
     { "name": "Candidate Name", "probability": 0.25 }
+  ],
+  "thresholds": [
+    { "level": "Above 5%", "probability": 0.60 }
   ],
   "probability": {
     "estimate": 0.35,
@@ -68,7 +82,9 @@ Respond with ONLY valid JSON:
   }
 }
 
-Only include "candidates" if the bet is a "who/what will" question. Otherwise omit it.`;
+Only include "candidates" if the bet is a "who/what will" question.
+Only include "thresholds" if the bet is a "how high/how much/how many" question.
+Otherwise omit both.`;
 
     const userPrompt = `Analyze this prediction market bet:
 

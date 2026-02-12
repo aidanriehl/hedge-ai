@@ -162,15 +162,6 @@ const Index = () => {
           <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/90 backdrop-blur-xl border-t border-border safe-bottom">
             <div className="max-w-lg mx-auto flex">
               <button
-                onClick={() => setTab("saved")}
-                className={`flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium transition-colors ${
-                  tab === "saved" ? "text-primary" : "text-muted-foreground"
-                }`}
-              >
-                <Bookmark className={`h-5 w-5 ${tab === "saved" ? "fill-primary" : ""}`} />
-                Saved
-              </button>
-              <button
                 onClick={() => setTab("search")}
                 className={`flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium transition-colors ${
                   tab === "search" ? "text-primary" : "text-muted-foreground"
@@ -178,6 +169,15 @@ const Index = () => {
               >
                 <TrendingUp className="h-5 w-5" />
                 Explore
+              </button>
+              <button
+                onClick={() => setTab("saved")}
+                className={`flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium transition-colors ${
+                  tab === "saved" ? "text-primary" : "text-muted-foreground"
+                }`}
+              >
+                <Bookmark className={`h-5 w-5 ${tab === "saved" ? "fill-primary" : ""}`} />
+                Saved
               </button>
             </div>
           </nav>
