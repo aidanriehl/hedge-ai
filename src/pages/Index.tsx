@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
-import { Zap, TrendingUp, ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ArrowLeft, Search } from "lucide-react";
 import { BetSearch } from "@/components/BetSearch";
-import { ResearchCategoryCard } from "@/components/ResearchCategoryCard";
-import { ProbabilityDisplay } from "@/components/ProbabilityDisplay";
+import { ResearchResult as ResearchResultView } from "@/components/ResearchResult";
 import { ResearchProgress } from "@/components/ResearchProgress";
 import { fetchKalshiEvents, runBetResearch } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -29,8 +27,8 @@ const Index = () => {
     } catch (err) {
       console.error("Failed to load events:", err);
       toast({
-        title: "Failed to load bets",
-        description: "Could not connect to Kalshi. Please try again.",
+        title: "Failed to load markets",
+        description: "Could not connect. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -54,7 +52,7 @@ const Index = () => {
       console.error("Research failed:", err);
       toast({
         title: "Research failed",
-        description: err.message || "Could not complete research. Please try again.",
+        description: err.message || "Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -69,129 +67,83 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background safe-top safe-bottom">
       {/* Header */}
-      <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={handleBack}>
-            <div className="p-2 rounded-lg bg-primary/10 border border-primary/20 glow-green">
-              <Zap className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-foreground tracking-tight">BetScope</h1>
-              <p className="text-xs text-muted-foreground font-mono">AI Research Assistant</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-primary" />
-            <span className="text-xs font-mono text-muted-foreground">
-              {events.length} active bets
-            </span>
-          </div>
+      <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-xl border-b border-border">
+        <div className="max-w-lg mx-auto px-4 h-14 flex items-center">
+          {selectedEvent ? (
+            <button onClick={handleBack} className="flex items-center gap-2 text-primary font-medium">
+              <ArrowLeft className="h-5 w-5" />
+              <span className="text-sm">Back</span>
+            </button>
+          ) : (
+            <h1 className="text-lg font-bold text-foreground">BetScope</h1>
+          )}
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-8">
-        {/* No event selected - show search */}
+      <main className="max-w-lg mx-auto px-4 py-4">
+        {/* Browse mode */}
         {!selectedEvent && (
-          <div className="space-y-8">
-            <div className="text-center pt-12 pb-8">
-              <h2 className="text-3xl font-bold text-foreground mb-3">
-                Deep Research on <span className="text-gradient-primary">Any Bet</span>
-              </h2>
-              <p className="text-muted-foreground max-w-lg mx-auto">
-                Select a Kalshi bet and get exhaustive AI-powered research with probability estimates,
-                historical analysis, and expert insights.
-              </p>
-            </div>
-
+          <div className="space-y-5">
             <BetSearch
               events={events}
               isLoading={loadingEvents}
               onSelectEvent={handleSelectEvent}
             />
 
-            {/* Category chips */}
+            {/* Category pills */}
             {!loadingEvents && events.length > 0 && (
-              <div className="pt-4">
-                <p className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3 text-center">
-                  Popular Categories
-                </p>
-                <div className="flex flex-wrap justify-center gap-2">
-                  {Array.from(new Set(events.map((e) => e.category).filter(Boolean)))
-                    .slice(0, 8)
-                    .map((cat) => (
-                      <span
-                        key={cat}
-                        className="px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground text-xs font-mono border border-border hover:border-primary/30 transition-colors cursor-default"
-                      >
-                        {cat}
-                      </span>
-                    ))}
-                </div>
+              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 no-scrollbar">
+                {Array.from(new Set(events.map((e) => e.category).filter(Boolean)))
+                  .slice(0, 8)
+                  .map((cat) => (
+                    <span
+                      key={cat}
+                      className="px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground text-xs font-medium whitespace-nowrap"
+                    >
+                      {cat}
+                    </span>
+                  ))}
+              </div>
+            )}
+
+            {/* Event list */}
+            {!loadingEvents && events.length > 0 && (
+              <div className="space-y-2">
+                {events.slice(0, 30).map((event) => (
+                  <button
+                    key={event.event_ticker}
+                    onClick={() => handleSelectEvent(event)}
+                    className="w-full text-left p-4 bg-card rounded-xl border border-border hover:border-primary/40 transition-colors"
+                  >
+                    <p className="font-medium text-foreground text-[15px] leading-snug">{event.title}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{event.category}</p>
+                  </button>
+                ))}
               </div>
             )}
 
             {loadingEvents && (
-              <div className="text-center py-8">
-                <div className="shimmer h-14 max-w-2xl mx-auto rounded-xl" />
+              <div className="space-y-2">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="h-16 bg-secondary rounded-xl animate-pulse" />
+                ))}
               </div>
             )}
           </div>
         )}
 
-        {/* Event selected - show research */}
+        {/* Research mode */}
         {selectedEvent && (
-          <div className="space-y-6">
-            {/* Back + event info */}
-            <div className="flex items-start gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleBack}
-                className="mt-1 text-muted-foreground hover:text-foreground"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div className="flex-1">
-                <span className="text-xs font-mono uppercase tracking-wider text-primary mb-1 block">
-                  {selectedEvent.category}
-                </span>
-                <h2 className="text-2xl font-bold text-foreground">{selectedEvent.title}</h2>
-                {selectedEvent.sub_title && (
-                  <p className="text-sm text-muted-foreground mt-1">{selectedEvent.sub_title}</p>
-                )}
-              </div>
+          <div className="space-y-4">
+            <div className="pb-2">
+              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{selectedEvent.category}</p>
+              <h2 className="text-xl font-bold text-foreground mt-1 leading-tight">{selectedEvent.title}</h2>
             </div>
 
-            {/* Loading */}
             {researching && <ResearchProgress />}
-
-            {/* Results */}
-            {research && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-2 pb-2 border-b border-border/50">
-                  <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
-                    Research Findings
-                  </span>
-                  <span className="text-xs font-mono text-primary">
-                    {research.categories.length} categories analyzed
-                  </span>
-                </div>
-
-                {/* Research categories */}
-                <div className="space-y-3">
-                  {research.categories.map((cat, i) => (
-                    <ResearchCategoryCard key={i} category={cat} index={i} />
-                  ))}
-                </div>
-
-                {/* Probability */}
-                <div className="pt-4">
-                  <ProbabilityDisplay probability={research.probability} />
-                </div>
-              </div>
-            )}
+            {research && <ResearchResultView research={research} />}
           </div>
         )}
       </main>

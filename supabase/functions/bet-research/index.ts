@@ -28,55 +28,47 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are an elite betting research analyst. You provide exhaustive, deep research on prediction market bets. Your research should feel like hiring a team of analysts who spent hours investigating.
+    const systemPrompt = `You are a sharp prediction market analyst. You think critically and question assumptions.
 
-CRITICAL RULES:
-- Every claim must explain WHY it matters, not just state facts
-- Include specific numbers, percentages, and historical data where possible
-- Cite sources when possible (e.g., "according to ESPN", "per historical data")
-- If data is limited or inconclusive, say so honestly
-- Adapt your research categories to the specific bet type
+Your job: Given a prediction market bet, identify the 4-8 most important factors that would actually move the needle on this outcome. Then give a probability estimate with honest reasoning.
 
-BAD example: "Sinner is ranked #1"
-GOOD example: "Sinner is currently ranked #1 in the world. Historically, when a #1 ranked player faces someone ranked #25-35, they win approximately 89% of the time on hard court surfaces. However, this drops to 78% in Grand Slam finals due to pressure factors."
+RULES:
+- Each finding should be ONE clear sentence that explains both the fact AND why it matters.
+- Think critically. Don't just list facts — question whether they actually change the probability. If someone has "high ambition" to do X, ask yourself: is the technology/logistics/politics actually there to make it happen?
+- Lead with the most important factors first.
+- Be honest when evidence is weak or inconclusive.
+- Don't force categories. Only include findings that genuinely matter.
 
-You must respond in valid JSON with this exact structure:
+For the probability:
+- Give your honest estimate as a decimal (0.0 to 1.0).
+- Write 2-3 sentences max explaining your conviction. Be direct. Question your own assumptions.
+- Confidence should reflect how much data you actually have.
+
+Respond with ONLY valid JSON in this format:
 {
   "categories": [
     {
-      "title": "Category Name",
+      "title": "Short Factor Name",
       "icon": "one of: history, trending, stats, health, clock, map, trophy, cloud, brain, users, news, alert",
       "confidence": "high" | "medium" | "low",
-      "bullets": [
-        "Detailed research bullet with WHY it matters..."
-      ]
+      "bullets": ["One clear sentence about this factor and why it matters."]
     }
   ],
   "probability": {
-    "estimate": 0.75,
-    "factors": [
-      {
-        "name": "Factor Name",
-        "suggestedProbability": 0.85,
-        "weight": 0.25
-      }
-    ],
-    "reasoning": "One paragraph explaining the final probability calculation",
+    "estimate": 0.35,
+    "factors": [],
+    "reasoning": "2-3 sentences. Be direct and honest about your conviction level.",
     "confidence": "high" | "medium" | "low"
   }
-}
+}`;
 
-For the research categories, dynamically choose the most relevant ones based on the bet type. For sports: historical matchups, recent form, rankings, injuries, fatigue, surface/venue, tournament history, weather, psychology, expert predictions, upset probability, news. For politics: polling, historical voting, fundamentals, money/campaign, news. For entertainment: industry patterns, insider intel, timing, business logic. For any other type: adapt intelligently.
-
-Provide 6-12 categories with 3-6 detailed bullets each. Each bullet should be a substantial paragraph, not a short sentence.`;
-
-    const userPrompt = `Research this prediction market bet thoroughly:
+    const userPrompt = `Analyze this prediction market bet:
 
 Title: ${eventTitle}
 Category: ${eventCategory || "Unknown"}
-Details: ${eventDetails || "No additional details available"}
+Details: ${eventDetails || "No additional details"}
 
-Provide exhaustive research with specific data, statistics, historical context, and expert analysis. Every bullet point should explain WHY the finding matters for predicting the outcome. Respond ONLY with valid JSON.`;
+Give me the 4-8 most important factors (one bullet each) and your honest probability estimate. Think critically — don't just pattern match. Respond ONLY with valid JSON.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -117,7 +109,6 @@ Provide exhaustive research with specific data, statistics, historical context, 
     const aiData = await response.json();
     const content = aiData.choices?.[0]?.message?.content || "";
 
-    // Parse JSON from the response - handle markdown code blocks
     let research;
     try {
       const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
