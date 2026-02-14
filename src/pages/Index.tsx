@@ -1,11 +1,18 @@
-import { useState, useEffect } from "react";
-import { ArrowLeft, Bookmark, TrendingUp } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { ArrowLeft, Bookmark, TrendingUp, Globe } from "lucide-react";
 import { SearchScreen } from "@/components/SearchScreen";
 import { ResearchResult as ResearchResultView } from "@/components/ResearchResult";
 import { ResearchProgress } from "@/components/ResearchProgress";
+import { Progress } from "@/components/ui/progress";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { fetchKalshiEvents, fetchEventMarkets, runBetResearch } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import type { KalshiEvent, ResearchResult } from "@/types/kalshi";
+
+interface CachedResearch {
+  research: ResearchResult;
+  marketPrice?: number;
+}
 
 const Index = () => {
   const [events, setEvents] = useState<KalshiEvent[]>([]);
@@ -19,6 +26,7 @@ const Index = () => {
     const stored = localStorage.getItem("betscope_saved");
     return stored ? new Set(JSON.parse(stored)) : new Set();
   });
+  const researchCache = useRef<Map<string, CachedResearch>>(new Map());
   const { toast } = useToast();
 
   useEffect(() => {
@@ -48,11 +56,20 @@ const Index = () => {
 
   async function handleSelectEvent(event: KalshiEvent) {
     setSelectedEvent(event);
+
+    // Check cache first
+    const cached = researchCache.current.get(event.event_ticker);
+    if (cached) {
+      setResearch(cached.research);
+      setMarketPrice(cached.marketPrice);
+      setResearching(false);
+      return;
+    }
+
     setResearch(null);
     setResearching(true);
     setMarketPrice(undefined);
 
-    // Fetch market price in parallel
     let price: number | undefined;
     try {
       const details = await fetchEventMarkets(event.event_ticker);
@@ -73,6 +90,8 @@ const Index = () => {
         price
       );
       setResearch(result);
+      // Store in cache
+      researchCache.current.set(event.event_ticker, { research: result, marketPrice: price });
     } catch (err: any) {
       console.error("Research failed:", err);
       toast({
@@ -99,6 +118,16 @@ const Index = () => {
       else next.add(ticker);
       return next;
     });
+  }
+
+  function getSavedBetSummary(event: KalshiEvent) {
+    const cached = researchCache.current.get(event.event_ticker);
+    if (!cached) return null;
+    const { research, marketPrice } = cached;
+    const topCandidate = research.candidates?.[0];
+    const probability = research.probability?.estimate;
+    const imageUrl = research.imageUrl;
+    return { topCandidate, probability, imageUrl, marketPrice };
   }
 
   const savedEvents = events.filter((e) => savedTickers.has(e.event_ticker));
@@ -153,16 +182,53 @@ const Index = () => {
                     <p className="text-muted-foreground/60 text-xs mt-1">Tap the bookmark icon to save bets</p>
                   </div>
                 ) : (
-                  savedEvents.map((event) => (
-                    <button
-                      key={event.event_ticker}
-                      onClick={() => handleSelectEvent(event)}
-                      className="w-full text-left p-4 bg-card rounded-xl border border-border hover:border-primary/40 transition-colors"
-                    >
-                      <p className="font-medium text-foreground text-[15px] leading-snug">{event.title}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{event.category}</p>
-                    </button>
-                  ))
+                  savedEvents.map((event) => {
+                    const summary = getSavedBetSummary(event);
+                    const probability = summary?.probability;
+                    const progressValue = probability != null ? Math.round(probability * 100) : null;
+                    
+                    return (
+                      <button
+                        key={event.event_ticker}
+                        onClick={() => handleSelectEvent(event)}
+                        className="w-full text-left p-4 bg-card rounded-xl border border-border hover:border-primary/40 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          {/* Avatar */}
+                          <Avatar className="h-10 w-10 flex-shrink-0">
+                            {summary?.imageUrl ? (
+                              <AvatarImage src={summary.imageUrl} alt={event.title} />
+                            ) : null}
+                            <AvatarFallback className="bg-muted">
+                              <Globe className="h-4 w-4 text-muted-foreground" />
+                            </AvatarFallback>
+                          </Avatar>
+
+                          {/* Title & category */}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-foreground text-[14px] leading-snug truncate">{event.title}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{event.category}</p>
+                          </div>
+
+                          {/* Probability badge */}
+                          {summary?.topCandidate ? (
+                            <span className="text-xs font-semibold text-primary flex-shrink-0">
+                              {summary.topCandidate.name} – {Math.round(summary.topCandidate.probability * 100)}%
+                            </span>
+                          ) : progressValue != null ? (
+                            <span className="text-xs font-semibold text-primary flex-shrink-0">
+                              {progressValue}% Yes
+                            </span>
+                          ) : null}
+                        </div>
+
+                        {/* Progress bar */}
+                        {progressValue != null && (
+                          <Progress value={progressValue} className="h-1 mt-3" />
+                        )}
+                      </button>
+                    );
+                  })
                 )}
               </div>
             )}
