@@ -5,6 +5,35 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function callAnthropic(system: string, messages: Array<{role: string; content: string}>, maxTokens = 4096) {
+  const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY not configured");
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "claude-opus-4-5-20250514",
+      max_tokens: maxTokens,
+      system,
+      messages,
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error("Anthropic error:", response.status, errText);
+    throw new Error(`Anthropic API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.content?.[0]?.text || "";
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -85,23 +114,21 @@ Answer their question using your full knowledge — you are NOT limited to the r
         ...(chatHistory || []).map((m: any) => ({ role: m.role, content: m.content })),
       ];
 
-      const chatResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "openai/gpt-5-mini", messages }),
-      });
+      // Filter out system message and convert for Anthropic
+      const anthropicMessages = messages
+        .filter((m: any) => m.role !== "system")
+        .map((m: any) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content }));
 
-      if (!chatResponse.ok) {
+      try {
+        const answer = await callAnthropic(chatSystemPrompt, anthropicMessages, 1024);
+        return new Response(JSON.stringify({ answer: answer || "I'm not sure about that." }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } catch (err) {
+        console.error("Chat Anthropic error:", err);
         return new Response(JSON.stringify({ answer: "Sorry, I couldn't process that. Try again." }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-
-      const chatData = await chatResponse.json();
-      const answer = chatData.choices?.[0]?.message?.content || "I'm not sure about that.";
-
-      return new Response(JSON.stringify({ answer }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
     }
 
     // === MORE RESEARCH ===
@@ -245,44 +272,16 @@ ${marketPrice != null ? `Current market price (YES): ${Math.round(marketPrice * 
 
 Give me the key factors (one short bullet each with specific data) and your honest probability estimate. Write simply. Respond ONLY with valid JSON.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits depleted. Please add credits in Settings." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      const errText = await response.text();
-      console.error("AI error:", response.status, errText);
+    let content: string;
+    try {
+      content = await callAnthropic(systemPrompt, [{ role: "user", content: userPrompt }], 4096);
+    } catch (err) {
+      console.error("Main research Anthropic error:", err);
       return new Response(
         JSON.stringify({ error: "AI research failed" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    const aiData = await response.json();
-    const content = aiData.choices?.[0]?.message?.content || "";
 
     let research;
     try {
