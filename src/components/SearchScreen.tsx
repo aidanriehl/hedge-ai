@@ -41,6 +41,21 @@ export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Pr
     );
   }, [events, query]);
 
+  // Fallback: if hotEvents failed/empty, pick 3 from unique categories in the events list
+  const displayedHotEvents = useMemo(() => {
+    if (hotEvents.length > 0) return hotEvents;
+    const result: KalshiEvent[] = [];
+    const usedCategories = new Set<string>();
+    for (const event of events) {
+      const cat = (event.category || "").toLowerCase();
+      if (usedCategories.has(cat)) continue;
+      result.push(event);
+      usedCategories.add(cat);
+      if (result.length >= 3) break;
+    }
+    return result;
+  }, [hotEvents, events]);
+
   return (
     <div className="space-y-6 pb-20">
       {/* Hero section */}
@@ -106,14 +121,14 @@ export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Pr
       )}
 
       {/* Hottest Bets (default view, no query) */}
-      {!isLoading && !query && hotEvents.length > 0 && (
+      {!isLoading && !query && displayedHotEvents.length > 0 && (
         <div className="pt-2">
           <div className="flex items-center gap-2 mb-3">
             <Flame className="h-4 w-4 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">Hottest Bets Right Now</h3>
           </div>
           <div className="space-y-1.5">
-            {hotEvents.map((event) => {
+            {displayedHotEvents.map((event) => {
               const style = getCategoryStyle(event.category);
               const Icon = style.icon;
               const market = event.markets?.[0];
