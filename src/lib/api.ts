@@ -22,10 +22,11 @@ export async function runBetResearch(
   eventTitle: string,
   eventCategory: string,
   eventDetails: string,
-  marketPrice?: number
+  marketPrice?: number,
+  marketCandidates?: Array<{name: string; price: number}>
 ): Promise<ResearchResult> {
   const { data, error } = await supabase.functions.invoke("bet-research", {
-    body: { eventTitle, eventCategory, eventDetails, marketPrice },
+    body: { eventTitle, eventCategory, eventDetails, marketPrice, marketCandidates },
   });
 
   if (error) throw new Error(error.message || "Research failed");

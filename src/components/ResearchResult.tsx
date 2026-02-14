@@ -16,9 +16,15 @@ const ICON_MAP: Record<string, React.ElementType> = {
   alert: AlertTriangle,
 };
 
+interface MarketCandidate {
+  name: string;
+  price: number;
+}
+
 interface Props {
   research: ResearchResultType;
   marketPrice?: number;
+  marketCandidates?: MarketCandidate[];
 }
 
 function renderBoldText(text: string) {
@@ -31,11 +37,12 @@ function renderBoldText(text: string) {
   });
 }
 
-export function ResearchResult({ research, marketPrice }: Props) {
+export function ResearchResult({ research, marketPrice, marketCandidates }: Props) {
   const pct = Math.round(research.probability.estimate * 100);
   const marketPct = marketPrice != null ? Math.round(marketPrice * 100) : null;
   const gap = marketPct != null ? pct - marketPct : null;
   const hasCandidates = research.candidates && research.candidates.length > 0;
+  const hasMarketCandidates = marketCandidates && marketCandidates.length > 1;
   const topCandidate = hasCandidates ? research.candidates![0] : null;
   const topCandidatePct = topCandidate ? Math.round(topCandidate.probability * 100) : null;
 
@@ -68,17 +75,6 @@ export function ResearchResult({ research, marketPrice }: Props) {
           </div>
         )}
 
-        {/* Market comparison */}
-        {!hasCandidates && marketPct != null && gap != null && (
-          <div className="flex items-center gap-3 mb-2 text-sm">
-            <span className="text-muted-foreground">Market: <span className="font-semibold text-foreground">{marketPct}%</span></span>
-            <span className="text-muted-foreground">•</span>
-            <span className={`font-semibold ${Math.abs(gap) >= 10 ? "text-primary" : "text-muted-foreground"}`}>
-              {gap > 0 ? "+" : ""}{gap}% vs AI
-            </span>
-          </div>
-        )}
-
         <p className="text-[14px] text-muted-foreground leading-relaxed">{research.probability.reasoning}</p>
       </div>
 
@@ -108,7 +104,73 @@ export function ResearchResult({ research, marketPrice }: Props) {
         </div>
       )}
 
-      {/* Thresholds (for "how high/much" questions) */}
+      {/* Kalshi vs AI comparison for candidate questions */}
+      {hasCandidates && hasMarketCandidates && (
+        <div className="bg-card rounded-2xl border border-border p-5">
+          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-3">Kalshi vs BetScope</p>
+          <div className="space-y-2.5">
+            {/* Header row */}
+            <div className="flex items-center text-[11px] text-muted-foreground font-medium uppercase tracking-wide mb-1">
+              <span className="flex-1">Candidate</span>
+              <span className="w-16 text-right">Kalshi</span>
+              <span className="w-16 text-right">AI</span>
+              <span className="w-14 text-right">Diff</span>
+            </div>
+            {/* Merge candidates: use AI list as base, match with market */}
+            {research.candidates!.map((aiC, i) => {
+              const aiPct = Math.round(aiC.probability * 100);
+              // Find matching market candidate (fuzzy match on name)
+              const marketMatch = marketCandidates!.find(mc =>
+                mc.name.toLowerCase().includes(aiC.name.toLowerCase().split(" ")[0]) ||
+                aiC.name.toLowerCase().includes(mc.name.toLowerCase().split(" ")[0])
+              );
+              const kalshiPct = marketMatch ? Math.round(marketMatch.price * 100) : null;
+              const diff = kalshiPct != null ? aiPct - kalshiPct : null;
+
+              return (
+                <div key={i} className="flex items-center py-1.5 border-t border-border/50 first:border-t-0">
+                  <span className="flex-1 text-[13px] text-foreground font-medium truncate pr-2">{aiC.name}</span>
+                  <span className="w-16 text-right text-[13px] text-muted-foreground font-semibold">
+                    {kalshiPct != null ? `${kalshiPct}%` : "—"}
+                  </span>
+                  <span className="w-16 text-right text-[13px] text-primary font-semibold">{aiPct}%</span>
+                  <span className={`w-14 text-right text-[12px] font-bold ${
+                    diff != null && Math.abs(diff) >= 5
+                      ? diff > 0 ? "text-green-600" : "text-red-500"
+                      : "text-muted-foreground"
+                  }`}>
+                    {diff != null ? `${diff > 0 ? "+" : ""}${diff}` : "—"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Kalshi vs AI comparison for binary bets */}
+      {!hasCandidates && marketPct != null && gap != null && (
+        <div className="bg-card rounded-2xl border border-border p-5">
+          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-3">Kalshi vs BetScope</p>
+          <div className="flex items-center justify-between">
+            <div className="text-center flex-1">
+              <p className="text-2xl font-bold text-muted-foreground">{marketPct}%</p>
+              <p className="text-[11px] text-muted-foreground mt-1">Kalshi</p>
+            </div>
+            <div className={`text-center px-4 py-1 rounded-full text-sm font-bold ${
+              Math.abs(gap) >= 10 ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+            }`}>
+              {gap > 0 ? "+" : ""}{gap}
+            </div>
+            <div className="text-center flex-1">
+              <p className="text-2xl font-bold text-primary">{pct}%</p>
+              <p className="text-[11px] text-primary mt-1">BetScope AI</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+
       {research.thresholds && research.thresholds.length > 0 && (
         <div className="bg-card rounded-2xl border border-border p-5">
           <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-3">Key Levels</p>
