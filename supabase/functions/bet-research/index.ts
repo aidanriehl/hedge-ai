@@ -53,8 +53,8 @@ QUESTION TYPE HANDLING:
 3. Simple yes/no questions: just give probability normally.
 
 For probability:
-- estimate is a decimal (0.0 to 1.0) for the YES outcome.
-- reasoning: 1 sentence, MAX 2. Plain English. Question yourself. No jargon.
+- estimate: a decimal (0.0 to 1.0) for the YES outcome. For candidate questions, set estimate to the top candidate's probability.
+- reasoning: 1 sentence, MAX 2. For candidate questions, explain WHY the top candidate is most likely (e.g. "Parolin has the strongest Vatican connections and moderate reputation"). Never say "this is a who-will-be question" or describe the question type — just give the actual reason.
 - confidence: how much real data backs this up.
 
 Respond with ONLY valid JSON:
