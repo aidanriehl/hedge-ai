@@ -5,6 +5,7 @@ import type { KalshiEvent } from "@/types/kalshi";
 
 interface Props {
   events: KalshiEvent[];
+  hotEvents: KalshiEvent[];
   isLoading: boolean;
   onSelectEvent: (event: KalshiEvent) => void;
 }
@@ -27,7 +28,7 @@ function getCategoryStyle(category: string) {
   return key ? CATEGORY_CONFIG[key] : { icon: Globe, color: "text-muted-foreground", bg: "bg-muted" };
 }
 
-export function SearchScreen({ events, isLoading, onSelectEvent }: Props) {
+export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Props) {
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
@@ -39,20 +40,6 @@ export function SearchScreen({ events, isLoading, onSelectEvent }: Props) {
         e.category?.toLowerCase().includes(q)
     );
   }, [events, query]);
-
-  const hottestBets = useMemo(() => {
-    // Pick top 3 from unique categories
-    const result: KalshiEvent[] = [];
-    const usedCategories = new Set<string>();
-    for (const event of events) {
-      const cat = (event.category || "").toLowerCase();
-      if (usedCategories.has(cat)) continue;
-      result.push(event);
-      usedCategories.add(cat);
-      if (result.length >= 3) break;
-    }
-    return result;
-  }, [events]);
 
   return (
     <div className="space-y-6 pb-20">
@@ -119,14 +106,14 @@ export function SearchScreen({ events, isLoading, onSelectEvent }: Props) {
       )}
 
       {/* Hottest Bets (default view, no query) */}
-      {!isLoading && !query && hottestBets.length > 0 && (
+      {!isLoading && !query && hotEvents.length > 0 && (
         <div className="pt-2">
           <div className="flex items-center gap-2 mb-3">
             <Flame className="h-4 w-4 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">Hottest Bets Right Now</h3>
           </div>
           <div className="space-y-1.5">
-            {hottestBets.map((event) => {
+            {hotEvents.map((event) => {
               const style = getCategoryStyle(event.category);
               const Icon = style.icon;
               const market = event.markets?.[0];
