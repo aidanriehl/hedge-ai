@@ -3,11 +3,13 @@ import { ArrowLeft, Bookmark, TrendingUp, Globe } from "lucide-react";
 import { SearchScreen } from "@/components/SearchScreen";
 import { ResearchResult as ResearchResultView } from "@/components/ResearchResult";
 import { ResearchProgress } from "@/components/ResearchProgress";
-import { Progress } from "@/components/ui/progress";
+import { ResearchChat } from "@/components/ResearchChat";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { fetchKalshiEvents, fetchEventMarkets, runBetResearch } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { KalshiEvent, ResearchResult } from "@/types/kalshi";
+import { Loader2 } from "lucide-react";
 
 interface CachedResearch {
   research: ResearchResult;
@@ -22,6 +24,8 @@ const Index = () => {
   const [research, setResearch] = useState<ResearchResult | null>(null);
   const [marketPrice, setMarketPrice] = useState<number | undefined>(undefined);
   const [tab, setTab] = useState<"saved" | "search">("search");
+  const [researchSteps, setResearchSteps] = useState<string[]>([]);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [savedTickers, setSavedTickers] = useState<Set<string>>(() => {
     const stored = localStorage.getItem("betscope_saved");
     return stored ? new Set(JSON.parse(stored)) : new Set();
@@ -29,13 +33,8 @@ const Index = () => {
   const researchCache = useRef<Map<string, CachedResearch>>(new Map());
   const { toast } = useToast();
 
-  useEffect(() => {
-    loadEvents();
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("betscope_saved", JSON.stringify([...savedTickers]));
-  }, [savedTickers]);
+  useEffect(() => { loadEvents(); }, []);
+  useEffect(() => { localStorage.setItem("betscope_saved", JSON.stringify([...savedTickers])); }, [savedTickers]);
 
   async function loadEvents() {
     try {
@@ -44,11 +43,7 @@ const Index = () => {
       setEvents(result.events);
     } catch (err) {
       console.error("Failed to load events:", err);
-      toast({
-        title: "Failed to load markets",
-        description: "Could not connect. Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Failed to load markets", description: "Could not connect. Please try again.", variant: "destructive" });
     } finally {
       setLoadingEvents(false);
     }
@@ -56,51 +51,70 @@ const Index = () => {
 
   async function handleSelectEvent(event: KalshiEvent) {
     setSelectedEvent(event);
-
-    // Check cache first
     const cached = researchCache.current.get(event.event_ticker);
     if (cached) {
       setResearch(cached.research);
       setMarketPrice(cached.marketPrice);
       setResearching(false);
+      setResearchSteps([]);
       return;
     }
 
     setResearch(null);
     setResearching(true);
     setMarketPrice(undefined);
+    setResearchSteps([]);
+
+    // Fetch research steps in parallel with market price
+    supabase.functions.invoke("bet-research", {
+      body: { generateSteps: true, eventTitle: event.title, eventCategory: event.category || "General" },
+    }).then(({ data }) => {
+      if (data?.steps) setResearchSteps(data.steps);
+    }).catch(() => {});
 
     let price: number | undefined;
     try {
       const details = await fetchEventMarkets(event.event_ticker);
       const market = details.markets?.[0];
-      if (market?.yes_bid != null) {
-        price = market.yes_bid;
-        setMarketPrice(price);
-      }
-    } catch (e) {
-      console.error("Could not fetch market price:", e);
-    }
+      if (market?.yes_bid != null) { price = market.yes_bid; setMarketPrice(price); }
+    } catch (e) { console.error("Could not fetch market price:", e); }
 
     try {
-      const result = await runBetResearch(
-        event.title,
-        event.category || "General",
-        event.sub_title || "",
-        price
-      );
+      const result = await runBetResearch(event.title, event.category || "General", event.sub_title || "", price);
       setResearch(result);
-      // Store in cache
       researchCache.current.set(event.event_ticker, { research: result, marketPrice: price });
     } catch (err: any) {
       console.error("Research failed:", err);
-      toast({
-        title: "Research failed",
-        description: err.message || "Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Research failed", description: err.message || "Please try again.", variant: "destructive" });
     } finally {
       setResearching(false);
+    }
+  }
+
+  async function handleMoreResearch() {
+    if (!selectedEvent || !research || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("bet-research", {
+        body: {
+          moreResearch: true,
+          eventTitle: selectedEvent.title,
+          eventCategory: selectedEvent.category || "General",
+          eventDetails: selectedEvent.sub_title || "",
+          existingCategories: research.categories.map(c => c.title),
+        },
+      });
+      if (error) throw error;
+      if (data?.categories) {
+        const updated = { ...research, categories: [...research.categories, ...data.categories] };
+        setResearch(updated);
+        researchCache.current.set(selectedEvent.event_ticker, { research: updated, marketPrice });
+      }
+    } catch (err) {
+      console.error("More research failed:", err);
+      toast({ title: "Could not load more", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setLoadingMore(false);
     }
   }
 
@@ -109,13 +123,13 @@ const Index = () => {
     setResearch(null);
     setResearching(false);
     setMarketPrice(undefined);
+    setResearchSteps([]);
   }
 
   function toggleSave(ticker: string) {
     setSavedTickers((prev) => {
       const next = new Set(prev);
-      if (next.has(ticker)) next.delete(ticker);
-      else next.add(ticker);
+      if (next.has(ticker)) next.delete(ticker); else next.add(ticker);
       return next;
     });
   }
@@ -143,17 +157,12 @@ const Index = () => {
                 <ArrowLeft className="h-5 w-5" />
                 <span className="text-sm">Back</span>
               </button>
-              <button
-                onClick={() => toggleSave(selectedEvent.event_ticker)}
-                className="ml-auto"
-              >
-                <Bookmark
-                  className={`h-5 w-5 ${savedTickers.has(selectedEvent.event_ticker) ? "fill-primary text-primary" : "text-muted-foreground"}`}
-                />
+              <button onClick={() => toggleSave(selectedEvent.event_ticker)} className="ml-auto">
+                <Bookmark className={`h-5 w-5 ${savedTickers.has(selectedEvent.event_ticker) ? "fill-primary text-primary" : "text-muted-foreground"}`} />
               </button>
             </div>
           </header>
-          <main className="max-w-lg mx-auto px-4 py-4 space-y-4">
+          <main className="max-w-lg mx-auto px-4 py-4 space-y-4 pb-32">
             <div className="pb-2">
               <p className="text-xs text-primary font-semibold uppercase tracking-wide">{selectedEvent.category}</p>
               <h2 className="text-xl font-bold text-foreground mt-1 leading-tight">{selectedEvent.title}</h2>
@@ -161,8 +170,28 @@ const Index = () => {
                 <p className="text-sm text-muted-foreground mt-1">Market: <span className="font-semibold text-foreground">{Math.round(marketPrice * 100)}¢ Yes</span></p>
               )}
             </div>
-            {researching && <ResearchProgress />}
-            {research && <ResearchResultView research={research} marketPrice={marketPrice} />}
+            {researching && <ResearchProgress steps={researchSteps} />}
+            {research && (
+              <>
+                <ResearchResultView research={research} marketPrice={marketPrice} />
+                {/* More research */}
+                <div className="text-center pt-2 pb-4">
+                  <button
+                    onClick={handleMoreResearch}
+                    disabled={loadingMore}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                  >
+                    {loadingMore ? (
+                      <span className="flex items-center gap-1.5 justify-center">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Loading...
+                      </span>
+                    ) : "More research"}
+                  </button>
+                </div>
+                {/* Chat */}
+                <ResearchChat eventTitle={selectedEvent.title} research={research} />
+              </>
+            )}
           </main>
         </>
       ) : (
@@ -186,12 +215,7 @@ const Index = () => {
                   savedEvents.map((event) => {
                     const summary = getSavedBetSummary(event);
                     const hasCandidates = summary?.hasCandidates;
-                    const progressValue = hasCandidates && summary?.topCandidate
-                      ? Math.round(summary.topCandidate.probability * 100)
-                      : summary?.probability != null
-                        ? Math.round(summary.probability * 100)
-                        : null;
-                    
+
                     return (
                       <button
                         key={event.event_ticker}
@@ -199,38 +223,31 @@ const Index = () => {
                         className="w-full text-left p-4 bg-card rounded-xl border border-border hover:border-primary/40 transition-colors"
                       >
                         <div className="flex items-center gap-3">
-                          {/* Avatar */}
                           <Avatar className="h-10 w-10 flex-shrink-0">
                             {summary?.imageUrl ? (
-                              <AvatarImage src={summary.imageUrl} alt={event.title} />
+                              <AvatarImage src={summary.imageUrl} alt={event.title} className="object-cover" />
                             ) : null}
                             <AvatarFallback className="bg-muted">
                               <Globe className="h-4 w-4 text-muted-foreground" />
                             </AvatarFallback>
                           </Avatar>
 
-                          {/* Title & category */}
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-foreground text-[14px] leading-snug truncate">{event.title}</p>
+                            <p className="font-medium text-foreground text-[14px] leading-snug">{event.title}</p>
                             <p className="text-xs text-muted-foreground mt-0.5">{event.category}</p>
                           </div>
-
-                          {/* Probability badge */}
-                          {summary?.topCandidate && hasCandidates ? (
-                            <span className="text-xs font-semibold text-primary flex-shrink-0">
-                              {Math.round(summary.topCandidate.probability * 100)}% {summary.topCandidate.name}
-                            </span>
-                          ) : progressValue != null ? (
-                            <span className="text-xs font-semibold text-primary flex-shrink-0">
-                              {progressValue}% Yes
-                            </span>
-                          ) : null}
                         </div>
 
-                        {/* Progress bar */}
-                        {progressValue != null && (
-                          <Progress value={progressValue} className="h-1 mt-3" />
-                        )}
+                        {/* Candidate or probability text replacing the progress bar */}
+                        {summary?.topCandidate && hasCandidates ? (
+                          <p className="text-xs font-semibold text-primary mt-2">
+                            {Math.round(summary.topCandidate.probability * 100)}% — {summary.topCandidate.name}
+                          </p>
+                        ) : summary?.probability != null ? (
+                          <p className="text-xs font-semibold text-primary mt-2">
+                            {Math.round(summary.probability * 100)}% Yes
+                          </p>
+                        ) : null}
                       </button>
                     );
                   })
@@ -239,11 +256,7 @@ const Index = () => {
             )}
 
             {tab === "search" && (
-              <SearchScreen
-                events={events}
-                isLoading={loadingEvents}
-                onSelectEvent={handleSelectEvent}
-              />
+              <SearchScreen events={events} isLoading={loadingEvents} onSelectEvent={handleSelectEvent} />
             )}
           </main>
 
@@ -251,18 +264,14 @@ const Index = () => {
             <div className="max-w-lg mx-auto flex">
               <button
                 onClick={() => setTab("search")}
-                className={`flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium transition-colors ${
-                  tab === "search" ? "text-primary" : "text-muted-foreground"
-                }`}
+                className={`flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium transition-colors ${tab === "search" ? "text-primary" : "text-muted-foreground"}`}
               >
                 <TrendingUp className="h-5 w-5" />
                 Explore
               </button>
               <button
                 onClick={() => setTab("saved")}
-                className={`flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium transition-colors ${
-                  tab === "saved" ? "text-primary" : "text-muted-foreground"
-                }`}
+                className={`flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium transition-colors ${tab === "saved" ? "text-primary" : "text-muted-foreground"}`}
               >
                 <Bookmark className={`h-5 w-5 ${tab === "saved" ? "fill-primary" : ""}`} />
                 Saved
