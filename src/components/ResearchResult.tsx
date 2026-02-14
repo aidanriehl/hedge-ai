@@ -35,6 +35,9 @@ export function ResearchResult({ research, marketPrice }: Props) {
   const pct = Math.round(research.probability.estimate * 100);
   const marketPct = marketPrice != null ? Math.round(marketPrice * 100) : null;
   const gap = marketPct != null ? pct - marketPct : null;
+  const hasCandidates = research.candidates && research.candidates.length > 0;
+  const topCandidate = hasCandidates ? research.candidates![0] : null;
+  const topCandidatePct = topCandidate ? Math.round(topCandidate.probability * 100) : null;
 
   return (
     <div className="space-y-3">
@@ -51,13 +54,22 @@ export function ResearchResult({ research, marketPrice }: Props) {
 
       {/* Probability card */}
       <div className="bg-card rounded-2xl border border-border p-5">
-        <div className="flex items-baseline gap-2 mb-1">
-          <span className="text-4xl font-bold text-foreground">{pct}%</span>
-          <span className="text-sm font-medium text-primary">Yes</span>
-        </div>
+        {hasCandidates ? (
+          <>
+            <div className="flex items-baseline gap-2 mb-1">
+              <span className="text-4xl font-bold text-foreground">{topCandidatePct}%</span>
+              <span className="text-sm font-medium text-primary">{topCandidate!.name}</span>
+            </div>
+          </>
+        ) : (
+          <div className="flex items-baseline gap-2 mb-1">
+            <span className="text-4xl font-bold text-foreground">{pct}%</span>
+            <span className="text-sm font-medium text-primary">Yes</span>
+          </div>
+        )}
 
         {/* Market comparison */}
-        {marketPct != null && gap != null && (
+        {!hasCandidates && marketPct != null && gap != null && (
           <div className="flex items-center gap-3 mb-2 text-sm">
             <span className="text-muted-foreground">Market: <span className="font-semibold text-foreground">{marketPct}%</span></span>
             <span className="text-muted-foreground">•</span>

@@ -127,7 +127,8 @@ const Index = () => {
     const topCandidate = research.candidates?.[0];
     const probability = research.probability?.estimate;
     const imageUrl = research.imageUrl;
-    return { topCandidate, probability, imageUrl, marketPrice };
+    const hasCandidates = (research.candidates?.length ?? 0) > 0;
+    return { topCandidate, probability, imageUrl, marketPrice, hasCandidates };
   }
 
   const savedEvents = events.filter((e) => savedTickers.has(e.event_ticker));
@@ -184,8 +185,12 @@ const Index = () => {
                 ) : (
                   savedEvents.map((event) => {
                     const summary = getSavedBetSummary(event);
-                    const probability = summary?.probability;
-                    const progressValue = probability != null ? Math.round(probability * 100) : null;
+                    const hasCandidates = summary?.hasCandidates;
+                    const progressValue = hasCandidates && summary?.topCandidate
+                      ? Math.round(summary.topCandidate.probability * 100)
+                      : summary?.probability != null
+                        ? Math.round(summary.probability * 100)
+                        : null;
                     
                     return (
                       <button
@@ -211,9 +216,9 @@ const Index = () => {
                           </div>
 
                           {/* Probability badge */}
-                          {summary?.topCandidate ? (
+                          {summary?.topCandidate && hasCandidates ? (
                             <span className="text-xs font-semibold text-primary flex-shrink-0">
-                              {summary.topCandidate.name} – {Math.round(summary.topCandidate.probability * 100)}%
+                              {Math.round(summary.topCandidate.probability * 100)}% {summary.topCandidate.name}
                             </span>
                           ) : progressValue != null ? (
                             <span className="text-xs font-semibold text-primary flex-shrink-0">
