@@ -21,7 +21,7 @@ serve(async (req) => {
     const events = eventsData.events || [];
 
     // 2. Take first 20 events and fetch their market details in parallel
-    const top20 = events.slice(0, 20);
+    const top20 = events.slice(0, 10);
     const detailResults = await Promise.allSettled(
       top20.map(async (event: any) => {
         const url = `${KALSHI_BASE}/events/${event.event_ticker}`;
