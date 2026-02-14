@@ -267,12 +267,12 @@ const Index = () => {
                         </div>
 
                         {/* Candidate or probability text replacing the progress bar */}
-                        {summary?.topCandidate && hasCandidates ? (
-                          <p className="text-xs font-semibold text-primary mt-2">
+                         {summary?.topCandidate && hasCandidates ? (
+                          <p className="text-xs font-semibold text-primary mt-2 pl-[52px]">
                             {Math.round(summary.topCandidate.probability * 100)}% — {summary.topCandidate.name}
                           </p>
-                        ) : summary?.probability != null ? (
-                          <p className="text-xs font-semibold text-primary mt-2">
+                         ) : summary?.probability != null ? (
+                          <p className="text-xs font-semibold text-primary mt-2 pl-[52px]">
                             {Math.round(summary.probability * 100)}% Yes
                           </p>
                         ) : null}

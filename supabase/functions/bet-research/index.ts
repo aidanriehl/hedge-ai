@@ -23,14 +23,20 @@ serve(async (req) => {
     // === GENERATE RESEARCH STEPS ===
     if (body.generateSteps) {
       const { eventTitle, eventCategory } = body;
-      const stepsPrompt = `Given this prediction market bet: "${eventTitle}" (category: ${eventCategory || "General"}), generate 5-7 hyper-specific research steps that an analyst would check. Each step should be a short phrase (5-10 words) specific to THIS bet. Not generic — make the user think "wow it's checking all of this."
+      const stepsPrompt = `Given this prediction market bet: "${eventTitle}" (category: ${eventCategory || "General"}), generate 5-7 short research steps (3-6 words each) that sound specific to THIS bet. Write them as plain actions a normal person would understand — no jargon, no technical language.
 
-Examples for a tennis bet "Sinner vs Alcaraz Australian Open":
-- "Sinner vs Alcaraz head-to-head record"
-- "Sinner's hard court win rate 2025"
-- "Alcaraz recent injury reports"
-- "Australian Open upset history"
-- "Current ATP rankings comparison"
+Examples for "Sinner vs Alcaraz Australian Open":
+- "Head-to-head record"
+- "Recent form on hard courts"
+- "Injury updates"
+- "Past Australian Open results"
+- "Current rankings"
+
+Examples for "Who will be the next Pope?":
+- "Top names being mentioned"
+- "Vatican insiders' picks"
+- "Age and health of frontrunners"
+- "Regional voting patterns"
 
 Return ONLY a JSON array of strings. No other text.`;
 
@@ -163,35 +169,33 @@ Return ONLY valid JSON:
       );
     }
 
-    const systemPrompt = `You are a prediction market analyst writing for a general audience. Use simple, clear language — no jargon, no filler. Write like you're explaining to a smart 8th grader.
+    const systemPrompt = `You are a prediction market analyst. Write for normal people — no jargon, no filler, no fancy words. 8th-grade reading level. Short sentences.
 
 RULES:
 - Give 4-8 findings grouped into 2-4 categories.
-- Each finding is ONE sentence with a **specific** number, date, or name. No vague statements.
-- Wrap the single most important phrase in each bullet with **bold** markdown. Don't overdo it — max one bold per bullet.
-- BAD: "Aggressive rate hikes could quickly accelerate unemployment."
-- GOOD: "The Fed raised rates **11 times since 2022**, the fastest pace since the 1980s — historically, that leads to a recession within 18 months."
-- Lead with what actually matters. Skip obvious stuff.
-- If someone claims they want to do something, question whether they actually can.
-- Be honest when the evidence is weak.
+- Each finding is ONE short sentence. Include a **specific** number, date, or name — bold the key part.
+- BAD: "Pope Francis has appointed 99 of the 137 current cardinal electors, significantly shaping the pool of potential successors."
+- GOOD: "**Pietro Parolin** has been Vatican's #2 for over 10 years — the longest-serving Secretary of State in decades."
+- Every bullet should clearly connect to WHO WINS or WHAT HAPPENS. If a fact doesn't obviously affect the outcome, don't include it.
+- Skip obvious stuff. Lead with what changes the odds.
+- Be honest when evidence is weak.
 
 QUESTION TYPE HANDLING:
 1. "Who/what will" questions (e.g. "who will be the next pope?"):
-   - Include a "candidates" array with top 5-8 most likely outcomes.
+   - Include a "candidates" array with the top 5-8 most likely people/outcomes.
    - Each has "name" and "probability" (decimal 0-1).
-   - Probabilities MUST add up to exactly 1.0 (100%).
-   - CRITICAL: Every candidate MUST be a specific, named person or entity. NEVER include vague options like "No clear successor", "Status quo", "None", "No one", "Other", or "Unknown". This is a prediction market — every option must be a concrete, bettable outcome.
-   - If the market data below includes candidate names and prices, use those candidates as your starting point. You may adjust probabilities based on your analysis, but include ALL candidates the market lists.
+   - Probabilities do NOT need to add up to 100%. Just give each candidate their honest odds. Do NOT include an "Other" option.
+   - CRITICAL: Every candidate MUST be a specific named person or thing. NEVER include "No clear successor", "Other", "Unknown", "Status quo", "None", etc.
+   - If market data is provided below, use those candidates as your starting point.
 
-2. "How high/how much/how many" questions (e.g. "how high will unemployment get?"):
+2. "How high/how much/how many" questions:
    - Include a "thresholds" array with 3-5 key levels.
-   - Each has "level" (like "Above 5%") and "probability" (decimal 0-1).
 
 3. Simple yes/no questions: just give probability normally.
 
 For probability:
-- estimate: a decimal (0.0 to 1.0) for the YES outcome. For candidate questions, set estimate to the top candidate's probability.
-- reasoning: 1 sentence, MAX 2. For candidate questions, explain WHY the top candidate is most likely (e.g. "Parolin has the strongest Vatican connections and moderate reputation"). Never say "this is a who-will-be question" or describe the question type — just give the actual reason.
+- estimate: decimal 0-1 for YES outcome. For candidate questions, use the top candidate's probability.
+- reasoning: 1 sentence max. For candidates, explain WHY the top one leads. Never describe the question type.
 - confidence: how much real data backs this up.
 
 Respond with ONLY valid JSON:
@@ -201,7 +205,7 @@ Respond with ONLY valid JSON:
       "title": "Short Label",
       "icon": "one of: history, trending, stats, health, clock, map, trophy, cloud, brain, users, news, alert",
       "confidence": "high" | "medium" | "low",
-      "bullets": ["One sentence with **key phrase bolded** and specific data."]
+      "bullets": ["One short sentence with **key data bolded**."]
     }
   ],
   "candidates": [
@@ -216,7 +220,7 @@ Respond with ONLY valid JSON:
     "reasoning": "1 sentence max. Plain English.",
     "confidence": "high" | "medium" | "low"
   },
-  "imagePrompt": "A short description of a relevant photo for this bet, like 'portrait of Johnny Depp as Captain Jack Sparrow' or 'US unemployment office line'. Make it specific and visual."
+  "imagePrompt": "A short description of a relevant photo."
 }
 
 Only include "candidates" for "who/what will" questions.
