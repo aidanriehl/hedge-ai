@@ -41,18 +41,10 @@ export function SearchScreen({ events, isLoading, onSelectEvent }: Props) {
   }, [events, query]);
 
   const hottestBets = useMemo(() => {
-    // Sort by volume (open_interest as proxy), pick top 3 from unique categories
-    const sorted = [...events]
-      .filter(e => e.markets && e.markets.length > 0)
-      .sort((a, b) => {
-        const volA = a.markets?.[0]?.volume || a.markets?.[0]?.open_interest || 0;
-        const volB = b.markets?.[0]?.volume || b.markets?.[0]?.open_interest || 0;
-        return volB - volA;
-      });
-    
+    // Pick top 3 from unique categories
     const result: KalshiEvent[] = [];
     const usedCategories = new Set<string>();
-    for (const event of sorted) {
+    for (const event of events) {
       const cat = (event.category || "").toLowerCase();
       if (usedCategories.has(cat)) continue;
       result.push(event);
