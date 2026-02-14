@@ -5,7 +5,7 @@ import { ResearchResult as ResearchResultView } from "@/components/ResearchResul
 import { ResearchProgress } from "@/components/ResearchProgress";
 import { ResearchChat } from "@/components/ResearchChat";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { fetchKalshiEvents, fetchEventMarkets, runBetResearch } from "@/lib/api";
+import { fetchKalshiEvents, fetchEventMarkets, runBetResearch, fetchHotEvents } from "@/lib/api";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { KalshiEvent, ResearchResult } from "@/types/kalshi";
@@ -24,6 +24,7 @@ interface CachedResearch {
 
 const Index = () => {
   const [events, setEvents] = useState<KalshiEvent[]>([]);
+  const [hotEvents, setHotEvents] = useState<KalshiEvent[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<KalshiEvent | null>(null);
   const [researching, setResearching] = useState(false);
@@ -46,8 +47,12 @@ const Index = () => {
   async function loadEvents() {
     try {
       setLoadingEvents(true);
-      const result = await fetchKalshiEvents();
+      const [result, hot] = await Promise.all([
+        fetchKalshiEvents(),
+        fetchHotEvents().catch(() => [] as KalshiEvent[]),
+      ]);
       setEvents(result.events);
+      setHotEvents(hot);
     } catch (err) {
       console.error("Failed to load events:", err);
       toast({ title: "Failed to load markets", description: "Could not connect. Please try again.", variant: "destructive" });
@@ -284,7 +289,7 @@ const Index = () => {
             )}
 
             {tab === "search" && (
-              <SearchScreen events={events} isLoading={loadingEvents} onSelectEvent={handleSelectEvent} />
+              <SearchScreen events={events} hotEvents={hotEvents} isLoading={loadingEvents} onSelectEvent={handleSelectEvent} />
             )}
           </main>
 

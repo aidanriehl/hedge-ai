@@ -18,6 +18,12 @@ export async function fetchEventMarkets(eventTicker: string): Promise<KalshiEven
   return data?.event as KalshiEvent;
 }
 
+export async function fetchHotEvents(): Promise<KalshiEvent[]> {
+  const { data, error } = await supabase.functions.invoke("hot-events");
+  if (error) throw new Error(error.message || "Failed to fetch hot events");
+  return data?.events || [];
+}
+
 export async function runBetResearch(
   eventTitle: string,
   eventCategory: string,

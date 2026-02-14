@@ -6,6 +6,7 @@ export interface KalshiEvent {
   mutually_exclusive: boolean;
   strike_date?: string;
   markets?: KalshiMarket[];
+  total_volume?: number;
 }
 
 export interface KalshiMarket {

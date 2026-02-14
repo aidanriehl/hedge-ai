@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.bet-research]
 verify_jwt = false
+
+[functions.hot-events]
+verify_jwt = false
