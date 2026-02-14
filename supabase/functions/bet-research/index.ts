@@ -205,6 +205,8 @@ RULES:
 - GOOD: "**Pietro Parolin** has been Vatican's #2 for over 10 years — the longest-serving Secretary of State in decades."
 - Every bullet should clearly connect to WHO WINS or WHAT HAPPENS. If a fact doesn't obviously affect the outcome, don't include it.
 - Skip obvious stuff. Lead with what changes the odds.
+- NEVER state something the reader already knows (e.g. "Elon Musk is rich", "Mars is far away"). Every bullet must add NEW information that shifts the probability.
+- Cut every word that doesn't add value. If you can remove a phrase without losing meaning, remove it. Example: "No human has traveled beyond 250,000 miles from Earth; Mars is 140 million miles away at closest approach" → "Mars is **140 million miles** away — no human has gone past **250,000**."
 - Be honest when evidence is weak.
 
 QUESTION TYPE HANDLING:
