@@ -96,7 +96,7 @@ export function ResearchChat({ eventTitle, research }: Props) {
       {/* Expanded message overlay - covers ~1/3 of screen */}
       {expanded && messages.length > 0 && (
         <div
-          className="fixed bottom-16 left-0 right-0 z-40 bg-card/95 backdrop-blur-xl border-t border-border"
+          className="fixed bottom-12 left-0 right-0 z-40 bg-card/95 backdrop-blur-xl border-t border-border"
           style={{ height: "33vh" }}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
@@ -136,7 +136,7 @@ export function ResearchChat({ eventTitle, research }: Props) {
       )}
 
       {/* Sticky input - always visible at bottom above nav */}
-      <div className="fixed bottom-14 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl border-t border-border px-4 py-2">
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl border-t border-border px-4 py-2 safe-bottom">
         <div className="relative max-w-lg mx-auto">
           <Input
             placeholder="Ask about this research..."
