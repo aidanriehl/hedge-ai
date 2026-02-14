@@ -11,20 +11,155 @@ serve(async (req) => {
   }
 
   try {
-    const { eventTitle, eventCategory, eventDetails, marketPrice } = await req.json();
-
-    if (!eventTitle) {
-      return new Response(
-        JSON.stringify({ error: "Event title is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
+    const body = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       return new Response(
         JSON.stringify({ error: "AI service not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // === GENERATE RESEARCH STEPS ===
+    if (body.generateSteps) {
+      const { eventTitle, eventCategory } = body;
+      const stepsPrompt = `Given this prediction market bet: "${eventTitle}" (category: ${eventCategory || "General"}), generate 5-7 hyper-specific research steps that an analyst would check. Each step should be a short phrase (5-10 words) specific to THIS bet. Not generic — make the user think "wow it's checking all of this."
+
+Examples for a tennis bet "Sinner vs Alcaraz Australian Open":
+- "Sinner vs Alcaraz head-to-head record"
+- "Sinner's hard court win rate 2025"
+- "Alcaraz recent injury reports"
+- "Australian Open upset history"
+- "Current ATP rankings comparison"
+
+Return ONLY a JSON array of strings. No other text.`;
+
+      const stepsResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash-lite",
+          messages: [{ role: "user", content: stepsPrompt }],
+        }),
+      });
+
+      if (!stepsResponse.ok) {
+        return new Response(JSON.stringify({ steps: ["Gathering data...", "Analyzing context...", "Evaluating factors...", "Forming estimate..."] }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const stepsData = await stepsResponse.json();
+      const stepsContent = stepsData.choices?.[0]?.message?.content || "[]";
+      let steps;
+      try {
+        const jsonMatch = stepsContent.match(/```(?:json)?\s*([\s\S]*?)```/);
+        steps = JSON.parse(jsonMatch ? jsonMatch[1].trim() : stepsContent.trim());
+      } catch {
+        steps = ["Gathering data...", "Analyzing context...", "Evaluating factors...", "Forming estimate..."];
+      }
+
+      return new Response(JSON.stringify({ steps }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === CHAT MODE ===
+    if (body.chatMode) {
+      const { eventTitle, researchContext, chatHistory, question } = body;
+
+      const chatSystemPrompt = `You are a prediction market analyst assistant. The user is viewing research about: "${eventTitle}".
+
+Here is the research data they're looking at:
+${researchContext}
+
+Answer their question concisely (2-4 sentences max). Be direct, use simple language. Reference specific data from the research when relevant.`;
+
+      const messages = [
+        { role: "system", content: chatSystemPrompt },
+        ...(chatHistory || []).map((m: any) => ({ role: m.role, content: m.content })),
+      ];
+
+      const chatResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "google/gemini-2.5-flash", messages }),
+      });
+
+      if (!chatResponse.ok) {
+        return new Response(JSON.stringify({ answer: "Sorry, I couldn't process that. Try again." }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const chatData = await chatResponse.json();
+      const answer = chatData.choices?.[0]?.message?.content || "I'm not sure about that.";
+
+      return new Response(JSON.stringify({ answer }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === MORE RESEARCH ===
+    if (body.moreResearch) {
+      const { eventTitle, eventCategory, eventDetails, existingCategories } = body;
+
+      const morePrompt = `You previously researched this prediction market bet: "${eventTitle}" (${eventCategory}).
+Details: ${eventDetails || "None"}
+
+You already covered these categories: ${existingCategories?.join(", ") || "unknown"}.
+
+Now provide 2-3 NEW research categories with findings that would MOST impact the odds. Focus on angles not yet covered. Same format rules:
+- Each finding is ONE sentence with a **specific** number, date, or name bolded.
+- Be hyper-specific and data-driven.
+
+Return ONLY valid JSON:
+{
+  "categories": [
+    {
+      "title": "Short Label",
+      "icon": "one of: history, trending, stats, health, clock, map, trophy, cloud, brain, users, news, alert",
+      "confidence": "high" | "medium" | "low",
+      "bullets": ["One sentence with **key phrase bolded**."]
+    }
+  ]
+}`;
+
+      const moreResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [{ role: "user", content: morePrompt }],
+        }),
+      });
+
+      if (!moreResponse.ok) {
+        return new Response(JSON.stringify({ error: "Failed to load more research" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const moreData = await moreResponse.json();
+      const moreContent = moreData.choices?.[0]?.message?.content || "";
+      let moreResearch;
+      try {
+        const jsonMatch = moreContent.match(/```(?:json)?\s*([\s\S]*?)```/);
+        moreResearch = JSON.parse(jsonMatch ? jsonMatch[1].trim() : moreContent.trim());
+      } catch {
+        return new Response(JSON.stringify({ error: "Failed to parse additional research" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      return new Response(JSON.stringify(moreResearch), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === MAIN RESEARCH ===
+    const { eventTitle, eventCategory, eventDetails, marketPrice } = body;
+
+    if (!eventTitle) {
+      return new Response(
+        JSON.stringify({ error: "Event title is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
