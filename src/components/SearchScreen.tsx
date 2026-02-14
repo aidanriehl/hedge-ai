@@ -41,15 +41,33 @@ export function SearchScreen({ events, isLoading, onSelectEvent }: Props) {
   }, [events, query]);
 
   const hottestBets = useMemo(() => {
-    return events.slice(0, 3);
+    // Sort by volume (open_interest as proxy), pick top 3 from unique categories
+    const sorted = [...events]
+      .filter(e => e.markets && e.markets.length > 0)
+      .sort((a, b) => {
+        const volA = a.markets?.[0]?.volume || a.markets?.[0]?.open_interest || 0;
+        const volB = b.markets?.[0]?.volume || b.markets?.[0]?.open_interest || 0;
+        return volB - volA;
+      });
+    
+    const result: KalshiEvent[] = [];
+    const usedCategories = new Set<string>();
+    for (const event of sorted) {
+      const cat = (event.category || "").toLowerCase();
+      if (usedCategories.has(cat)) continue;
+      result.push(event);
+      usedCategories.add(cat);
+      if (result.length >= 3) break;
+    }
+    return result;
   }, [events]);
 
   return (
     <div className="space-y-6 pb-20">
       {/* Hero section */}
       <div className="pt-8 pb-2 text-center">
-        <h2 className="text-3xl font-bold text-foreground">Search Your Bet</h2>
-        <p className="text-sm text-muted-foreground mt-2">Research to make an informed decision</p>
+        <h2 className="text-3xl font-bold text-foreground">Research Your Bet</h2>
+        <p className="text-sm text-muted-foreground mt-2">Make more informed trades</p>
       </div>
 
       {/* Search bar */}

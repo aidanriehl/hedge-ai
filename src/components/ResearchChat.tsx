@@ -47,14 +47,27 @@ export function ResearchChat({ eventTitle, research }: Props) {
         body: {
           chatMode: true,
           eventTitle,
-          researchContext: JSON.stringify(research),
+          researchContext: JSON.stringify({
+            categories: research.categories?.slice(0, 3) || [],
+            probability: research.probability,
+            candidates: research.candidates,
+          }),
           chatHistory: newMessages,
           question: text,
         },
       });
 
-      if (error) throw error;
-      setMessages([...newMessages, { role: "assistant", content: data.answer }]);
+      if (error) {
+        console.error("Chat invoke error:", error);
+        throw error;
+      }
+      
+      const answer = data?.answer || (typeof data === 'string' ? data : null);
+      if (!answer) {
+        console.error("Unexpected chat response:", data);
+        throw new Error("No answer received");
+      }
+      setMessages([...newMessages, { role: "assistant", content: answer }]);
     } catch (err) {
       console.error("Chat error:", err);
       setMessages([...newMessages, { role: "assistant", content: "Sorry, I couldn't answer that. Try again." }]);
