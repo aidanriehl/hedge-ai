@@ -102,12 +102,16 @@ Return ONLY a JSON array of strings. No other text.`;
     if (body.chatMode) {
       const { eventTitle, researchContext, chatHistory, question } = body;
 
-      const chatSystemPrompt = `You are a knowledgeable prediction market analyst assistant. The user is viewing research about: "${eventTitle}".
+      const chatSystemPrompt = `You are a prediction market analyst. The user is viewing research about: "${eventTitle}".
 
-Here is the research data they're looking at:
+Research context:
 ${researchContext}
 
-Answer their question using your full knowledge — you are NOT limited to the research above. Use the research data when relevant, but also draw on general knowledge, history, statistics, and context to give the best answer. Be concise (2-4 sentences), direct, and use simple language. If you cite a number or fact, be specific.`;
+Rules:
+- Answer any question the user asks — you are a general-purpose assistant, not limited to the research topic.
+- Just answer directly. No disclaimers, no "that's not related to X", no offers to help with other things.
+- Be concise (1-3 sentences). Use simple language. Cite specific numbers when relevant.
+- Use your full knowledge — the research context is supplementary, not a constraint.`;
 
       const messages = [
         { role: "system", content: chatSystemPrompt },
