@@ -11,9 +11,15 @@ import { useToast } from "@/hooks/use-toast";
 import type { KalshiEvent, ResearchResult } from "@/types/kalshi";
 import { Loader2 } from "lucide-react";
 
+interface MarketCandidate {
+  name: string;
+  price: number;
+}
+
 interface CachedResearch {
   research: ResearchResult;
   marketPrice?: number;
+  marketCandidates?: MarketCandidate[];
 }
 
 const Index = () => {
@@ -23,6 +29,7 @@ const Index = () => {
   const [researching, setResearching] = useState(false);
   const [research, setResearch] = useState<ResearchResult | null>(null);
   const [marketPrice, setMarketPrice] = useState<number | undefined>(undefined);
+  const [marketCandidates, setMarketCandidates] = useState<MarketCandidate[]>([]);
   const [tab, setTab] = useState<"saved" | "search">("search");
   const [researchSteps, setResearchSteps] = useState<string[]>([]);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -55,6 +62,7 @@ const Index = () => {
     if (cached) {
       setResearch(cached.research);
       setMarketPrice(cached.marketPrice);
+      setMarketCandidates(cached.marketCandidates || []);
       setResearching(false);
       setResearchSteps([]);
       return;
@@ -63,6 +71,7 @@ const Index = () => {
     setResearch(null);
     setResearching(true);
     setMarketPrice(undefined);
+    setMarketCandidates([]);
     setResearchSteps([]);
 
     // Fetch research steps in parallel with market price
@@ -73,16 +82,34 @@ const Index = () => {
     }).catch(() => {});
 
     let price: number | undefined;
+    let candidates: MarketCandidate[] = [];
     try {
       const details = await fetchEventMarkets(event.event_ticker);
-      const market = details.markets?.[0];
-      if (market?.yes_bid != null) { price = market.yes_bid; setMarketPrice(price); }
+      const markets = details.markets || [];
+      if (markets.length > 1) {
+        // Multi-candidate event — extract each candidate's price
+        candidates = markets
+          .filter(m => m.yes_bid != null && m.yes_bid > 0)
+          .map(m => ({
+            name: m.yes_sub_title || m.title.replace(event.title, "").trim() || m.title,
+            price: m.yes_bid!,
+          }))
+          .sort((a, b) => b.price - a.price);
+        setMarketCandidates(candidates);
+        if (candidates.length > 0) {
+          price = candidates[0].price;
+          setMarketPrice(price);
+        }
+      } else {
+        const market = markets[0];
+        if (market?.yes_bid != null) { price = market.yes_bid; setMarketPrice(price); }
+      }
     } catch (e) { console.error("Could not fetch market price:", e); }
 
     try {
-      const result = await runBetResearch(event.title, event.category || "General", event.sub_title || "", price);
+      const result = await runBetResearch(event.title, event.category || "General", event.sub_title || "", price, candidates.length > 0 ? candidates : undefined);
       setResearch(result);
-      researchCache.current.set(event.event_ticker, { research: result, marketPrice: price });
+      researchCache.current.set(event.event_ticker, { research: result, marketPrice: price, marketCandidates: candidates });
     } catch (err: any) {
       console.error("Research failed:", err);
       toast({ title: "Research failed", description: err.message || "Please try again.", variant: "destructive" });
@@ -123,6 +150,7 @@ const Index = () => {
     setResearch(null);
     setResearching(false);
     setMarketPrice(undefined);
+    setMarketCandidates([]);
     setResearchSteps([]);
   }
 
@@ -173,7 +201,7 @@ const Index = () => {
             {researching && <ResearchProgress steps={researchSteps} />}
             {research && (
               <>
-                <ResearchResultView research={research} marketPrice={marketPrice} />
+                <ResearchResultView research={research} marketPrice={marketPrice} marketCandidates={marketCandidates} />
                 {/* More research */}
                 <div className="text-center pt-2 pb-4">
                   <button

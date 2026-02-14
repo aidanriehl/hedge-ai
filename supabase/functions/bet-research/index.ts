@@ -177,9 +177,11 @@ RULES:
 
 QUESTION TYPE HANDLING:
 1. "Who/what will" questions (e.g. "who will be the next pope?"):
-   - Include a "candidates" array with top 3-6 most likely outcomes.
+   - Include a "candidates" array with top 5-8 most likely outcomes.
    - Each has "name" and "probability" (decimal 0-1).
-   - Probabilities MUST add up to exactly 1.0 (100%). Include an "Other" catch-all if needed.
+   - Probabilities MUST add up to exactly 1.0 (100%).
+   - CRITICAL: Every candidate MUST be a specific, named person or entity. NEVER include vague options like "No clear successor", "Status quo", "None", "No one", "Other", or "Unknown". This is a prediction market — every option must be a concrete, bettable outcome.
+   - If the market data below includes candidate names and prices, use those candidates as your starting point. You may adjust probabilities based on your analysis, but include ALL candidates the market lists.
 
 2. "How high/how much/how many" questions (e.g. "how high will unemployment get?"):
    - Include a "thresholds" array with 3-5 key levels.
@@ -221,12 +223,21 @@ Only include "candidates" for "who/what will" questions.
 Only include "thresholds" for "how high/much/many" questions.
 Otherwise omit both.`;
 
+    // Build market candidates info from Kalshi markets data
+    const marketCandidates = body.marketCandidates as Array<{name: string; price: number}> | undefined;
+    let marketCandidatesStr = "";
+    if (marketCandidates && marketCandidates.length > 0) {
+      marketCandidatesStr = "\n\nKALSHI MARKET CANDIDATES AND CURRENT PRICES:\n" +
+        marketCandidates.map(c => `- ${c.name}: ${Math.round(c.price * 100)}%`).join("\n") +
+        "\n\nUse these candidates as your starting point. Include ALL of them. You may adjust probabilities based on your research.";
+    }
+
     const userPrompt = `Analyze this prediction market bet:
 
 Title: ${eventTitle}
 Category: ${eventCategory || "Unknown"}
 Details: ${eventDetails || "No additional details"}
-${marketPrice != null ? `Current market price (YES): ${Math.round(marketPrice * 100)}%` : ""}
+${marketPrice != null ? `Current market price (YES): ${Math.round(marketPrice * 100)}%` : ""}${marketCandidatesStr}
 
 Give me the key factors (one short bullet each with specific data) and your honest probability estimate. Write simply. Respond ONLY with valid JSON.`;
 
