@@ -162,7 +162,7 @@ const Index = () => {
               </button>
             </div>
           </header>
-          <main className="max-w-lg mx-auto px-4 py-4 space-y-4 pb-32">
+          <main className="max-w-lg mx-auto px-4 py-4 space-y-4 pb-40">
             <div className="pb-2">
               <p className="text-xs text-primary font-semibold uppercase tracking-wide">{selectedEvent.category}</p>
               <h2 className="text-xl font-bold text-foreground mt-1 leading-tight">{selectedEvent.title}</h2>
