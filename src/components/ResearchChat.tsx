@@ -4,6 +4,16 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import type { ResearchResult } from "@/types/kalshi";
 
+function renderMarkdown(text: string) {
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
@@ -115,13 +125,13 @@ export function ResearchChat({ eventTitle, research }: Props) {
               {messages.map((msg, i) => (
                 <div
                   key={i}
-                  className={`px-3 py-2 rounded-2xl text-sm leading-relaxed max-w-[85%] ${
+                  className={`px-3 py-2 rounded-2xl text-sm leading-relaxed w-fit max-w-[85%] ${
                     msg.role === "user"
                       ? "bg-primary text-primary-foreground ml-auto"
                       : "bg-muted text-foreground"
                   }`}
                 >
-                  {msg.content}
+                  {msg.role === "assistant" ? renderMarkdown(msg.content) : msg.content}
                 </div>
               ))}
               {loading && (
