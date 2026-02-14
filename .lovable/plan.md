@@ -1,40 +1,46 @@
 
 
-# Sort Hottest Bets by Volume (Most Money in the Pot)
+# Integrate Claude Opus 4.5 for Research and Chat
 
-## Problem
-The "Hottest Bets" section currently just picks the first 3 events from the Kalshi API in arbitrary order. There's no ranking by popularity or trading volume.
+## Overview
+Replace the main research analysis and chat models with Anthropic's Claude Opus 4.5, while keeping the fast/cheap models for step generation (Gemini Flash Lite) and image generation (Gemini Flash Image).
 
-## Solution
-Create a new backend function endpoint that fetches events, then for each event fetches its markets to get volume data, ranks them by total volume, and returns the top 3 from unique categories.
+## Step 1: Store the API Key
+Use the secure secrets tool to request your Anthropic API key. This will be stored securely and only accessible from backend functions.
 
-## How It Works
+## Step 2: Update the Backend Function
 
-1. **New backend function: `hot-events`** -- A dedicated function that:
-   - Fetches the first 100 open events from Kalshi
-   - For the top ~20 events (to limit API calls), fetches their market details in parallel to get volume data
-   - Sums up `volume` across all markets per event to get total volume
-   - Sorts by total volume descending
-   - Returns the top 3 from unique categories (no two bets from the same category)
+Modify `supabase/functions/bet-research/index.ts` to call the Anthropic Messages API directly for two modes:
 
-2. **New API function `fetchHotEvents()`** in `src/lib/api.ts` that calls this backend function
+**Main Research** (currently `google/gemini-2.5-flash`):
+- Call `https://api.anthropic.com/v1/messages` with `claude-opus-4-5-20250514`
+- Keep the same system prompt and JSON output format
+- Parse the response from Anthropic's format (`content[0].text`) instead of OpenAI format
 
-3. **Update `Index.tsx`** to call `fetchHotEvents()` on load and pass the results to `SearchScreen`
+**Chat** (currently `openai/gpt-5-mini`):
+- Same Anthropic endpoint and model
+- Convert chat history to Anthropic's message format
+- Keep the same system prompt
 
-4. **Update `SearchScreen.tsx`** to accept `hotEvents` as a prop instead of computing them from the events list
+**Unchanged:**
+- Step generation stays on `google/gemini-2.5-flash-lite` (fast, cheap)
+- More Research stays on `google/gemini-2.5-flash`
+- Image generation stays on `google/gemini-2.5-flash-image`
 
 ## Technical Details
 
-### Backend function (`supabase/functions/hot-events/index.ts`)
-- Fetches `/events?limit=100&status=open` from Kalshi
-- Takes the first 20 events, fetches `/events/{ticker}` for each in parallel to get market volume
-- Computes total volume per event (sum of all market volumes)
-- Filters to top 3 unique categories, sorted by volume
-- Returns enriched events with volume data and first market price
+### Anthropic API differences from OpenAI format:
+- System prompt goes in a separate `system` field, not in messages array
+- Response is in `content[0].text` instead of `choices[0].message.content`
+- Uses `x-api-key` header instead of `Authorization: Bearer`
+- Uses `max_tokens` (required) instead of optional
+- Model ID: `claude-opus-4-5-20250514`
 
-### Frontend changes
-- `src/lib/api.ts`: Add `fetchHotEvents()` function
-- `src/pages/Index.tsx`: Call `fetchHotEvents()` in `useEffect`, store in `hotEvents` state, pass to `SearchScreen`
-- `src/components/SearchScreen.tsx`: Accept `hotEvents` prop, use it directly for the "Hottest Bets" section instead of the `hottestBets` useMemo. Add `KalshiMarket` type to include volume in the event type so we can show market prices
-- `src/types/kalshi.ts`: Add `total_volume` optional field to `KalshiEvent`
+### Changes to `bet-research/index.ts`:
+- Add a helper function `callAnthropic(system, messages, maxTokens)` that handles the Anthropic API call
+- In the main research section: replace the Lovable AI gateway call with `callAnthropic()`
+- In the chat section: replace the gateway call with `callAnthropic()`, converting chat history format
+- Read `ANTHROPIC_API_KEY` from `Deno.env.get()`
 
+### No frontend changes needed
+The response format stays identical -- only the backend model changes.
