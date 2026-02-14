@@ -1,54 +1,40 @@
 
 
-## BetScope UI and Caching Overhaul
+# Sort Hottest Bets by Volume (Most Money in the Pot)
 
-### 1. Redesigned Search/Explore Screen
+## Problem
+The "Hottest Bets" section currently just picks the first 3 events from the Kalshi API in arbitrary order. There's no ranking by popularity or trading volume.
 
-The explore screen will be simplified to a centered, hero-style layout:
+## Solution
+Create a new backend function endpoint that fetches events, then for each event fetches its markets to get volume data, ranks them by total volume, and returns the top 3 from unique categories.
 
-- Large centered title: **"Search Your Bet"**
-- Subtitle below: **"Research to make an informed decision"**
-- Prominent search bar centered below the subtitle
-- Below the search bar, a small section titled **"Hottest Bets Right Now"** showing only **3 bets** (picked from the events list — the first 3 or those with highest volume/market activity)
-- Each hot bet card shows the category icon, title, and market price
-- When the user types in the search bar, search results replace the hottest bets section (same as current filtered behavior)
+## How It Works
 
-### 2. Research Result Caching
+1. **New backend function: `hot-events`** -- A dedicated function that:
+   - Fetches the first 100 open events from Kalshi
+   - For the top ~20 events (to limit API calls), fetches their market details in parallel to get volume data
+   - Sums up `volume` across all markets per event to get total volume
+   - Sorts by total volume descending
+   - Returns the top 3 from unique categories (no two bets from the same category)
 
-Currently, every time you tap a bet it re-fetches research from scratch. We will add an in-memory cache:
+2. **New API function `fetchHotEvents()`** in `src/lib/api.ts` that calls this backend function
 
-- A `Map<string, { research: ResearchResult; marketPrice?: number }>` stored in React state on the Index page
-- When a bet is selected, check the cache first. If found, instantly show the cached result (no loading, no API call)
-- Only run research if the bet hasn't been researched yet in this session
-- This means tapping the same bet twice shows identical results instantly
+3. **Update `Index.tsx`** to call `fetchHotEvents()` on load and pass the results to `SearchScreen`
 
-### 3. Enhanced Saved Bets View
+4. **Update `SearchScreen.tsx`** to accept `hotEvents` as a prop instead of computing them from the events list
 
-Saved bet cards will be richer, showing cached research data when available:
+## Technical Details
 
-- Left side: circular image thumbnail (from `research.imageUrl`) or a category icon fallback
-- Center: bet title and category
-- Bottom/right: the AI probability percentage (e.g., "76% Yes") or, for candidate bets, the top candidate name and percentage (e.g., "Dua Lipa - 35%")
-- A small progress bar at the bottom of the card showing the probability visually
+### Backend function (`supabase/functions/hot-events/index.ts`)
+- Fetches `/events?limit=100&status=open` from Kalshi
+- Takes the first 20 events, fetches `/events/{ticker}` for each in parallel to get market volume
+- Computes total volume per event (sum of all market volumes)
+- Filters to top 3 unique categories, sorted by volume
+- Returns enriched events with volume data and first market price
 
-### Technical Details
-
-**Files to modify:**
-
-1. **`src/pages/Index.tsx`**
-   - Add a `researchCache` state: `Map<string, { research: ResearchResult; marketPrice?: number }>`
-   - In `handleSelectEvent`, check cache before calling APIs. If cached, set state from cache and skip fetch
-   - After successful research, store result in cache
-   - Pass `researchCache` to `SavedBets` rendering so saved cards can show cached data
-   - Keep the bottom nav as-is (Explore left, Saved right)
-
-2. **`src/components/SearchScreen.tsx`**
-   - Replace the headline with centered "Search Your Bet" / "Research to make an informed decision"
-   - Remove the grouped-by-category layout for the default (no query) view
-   - Add a "Hottest Bets Right Now" section showing exactly 3 events with category icons and market prices
-   - Keep the search/filter behavior for when users type a query (show filtered results grouped or flat)
-
-3. **`src/pages/Index.tsx` (saved tab section)**
-   - Redesign saved bet cards to show: circular image (from cache), title, category, and AI probability or top candidate with percentage
-   - Add a thin progress bar at the bottom of each card representing the probability
+### Frontend changes
+- `src/lib/api.ts`: Add `fetchHotEvents()` function
+- `src/pages/Index.tsx`: Call `fetchHotEvents()` in `useEffect`, store in `hotEvents` state, pass to `SearchScreen`
+- `src/components/SearchScreen.tsx`: Accept `hotEvents` prop, use it directly for the "Hottest Bets" section instead of the `hottestBets` useMemo. Add `KalshiMarket` type to include volume in the event type so we can show market prices
+- `src/types/kalshi.ts`: Add `total_volume` optional field to `KalshiEvent`
 
