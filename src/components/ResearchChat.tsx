@@ -50,6 +50,9 @@ export function ResearchChat({ eventTitle, research }: Props) {
     setMessages(newMessages);
     setInput("");
     setLoading(true);
+    // Reset textarea height
+    const ta = document.querySelector<HTMLTextAreaElement>("textarea");
+    if (ta) ta.style.height = "auto";
     setExpanded(true);
 
     try {
@@ -148,19 +151,30 @@ export function ResearchChat({ eventTitle, research }: Props) {
       {/* Sticky input - always visible at bottom above nav */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl border-t border-border px-4 pt-2 pb-4 safe-bottom">
         <div className="relative max-w-lg mx-auto">
-          <Input
+          <textarea
             placeholder="Ask about this research..."
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            onChange={(e) => {
+              setInput(e.target.value);
+              // Auto-resize
+              e.target.style.height = "auto";
+              e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
             onFocus={() => messages.length > 0 && setExpanded(true)}
-            className="pr-10 h-10 text-sm bg-card border border-border rounded-xl"
+            className="w-full pr-10 min-h-[40px] max-h-[120px] py-2 px-3 text-sm bg-card border border-border rounded-xl resize-none overflow-y-auto focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             disabled={loading}
+            rows={1}
           />
           <button
             onClick={handleSend}
             disabled={!input.trim() || loading}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-primary disabled:text-muted-foreground"
+            className="absolute right-2 bottom-2 p-1.5 text-primary disabled:text-muted-foreground"
           >
             <Send className="h-4 w-4" />
           </button>
