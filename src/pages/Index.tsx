@@ -66,17 +66,24 @@ const Index = () => {
     setSelectedEvent(event);
     const cached = researchCache.current.get(event.event_ticker);
     if (cached) {
-      // Replay the loading animation before revealing cached result
-      setResearch(null);
-      setResearching(true);
       setMarketPrice(cached.marketPrice);
       setMarketCandidates(cached.marketCandidates || []);
       setResearchSteps(cached.steps);
-      const delay = Math.max(cached.steps.length * 2500, 2000);
-      setTimeout(() => {
+
+      // Skip animation for bookmarked bets the user already viewed
+      if (savedTickers.has(event.event_ticker)) {
         setResearch(cached.research);
         setResearching(false);
-      }, delay);
+      } else {
+        // Replay the loading animation before revealing cached result
+        setResearch(null);
+        setResearching(true);
+        const delay = Math.max(cached.steps.length * 2500, 2000);
+        setTimeout(() => {
+          setResearch(cached.research);
+          setResearching(false);
+        }, delay);
+      }
       return;
     }
 
