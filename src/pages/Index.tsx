@@ -290,14 +290,14 @@ const Index = () => {
                           </div>
                         </div>
 
-                        {/* Candidate or probability text replacing the progress bar */}
+                        {/* Candidate or probability text */}
                          {summary?.topCandidate && hasCandidates ? (
-                          <p className="text-xs font-semibold text-primary mt-2 pl-[52px]">
-                            {Math.round(summary.topCandidate.probability * 100)}% — {summary.topCandidate.name}
+                          <p className="text-[11px] font-semibold text-primary mt-1 pl-[52px]">
+                            {Math.round(summary.topCandidate.probability * 100)}% chance - {summary.topCandidate.name}
                           </p>
                          ) : summary?.probability != null ? (
-                          <p className="text-xs font-semibold text-primary mt-2 pl-[52px]">
-                            {Math.round(summary.probability * 100)}% Yes
+                          <p className="text-[11px] font-semibold text-primary mt-1 pl-[52px]">
+                            {Math.round(summary.probability * 100)}% chance on Kalshi
                           </p>
                         ) : null}
                       </button>
