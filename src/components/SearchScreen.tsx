@@ -144,7 +144,7 @@ export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Pr
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <span className="text-[11px] text-muted-foreground">{event.category}</span>
                         {yesPrice != null && (
-                          <span className="text-[11px] font-semibold text-primary">{yesPrice}% Yes on Kalshi</span>
+                          <span className="text-[11px] font-semibold text-primary">{yesPrice}% chance on Kalshi</span>
                         )}
                       </div>
                     </div>
@@ -182,7 +182,7 @@ export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Pr
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <span className="text-[11px] text-muted-foreground">{event.category}</span>
                         {yesPrice != null && (
-                          <span className="text-[11px] font-semibold text-primary">{yesPrice}% Yes on Kalshi</span>
+                          <span className="text-[11px] font-semibold text-primary">{yesPrice}% chance on Kalshi</span>
                         )}
                       </div>
                     </div>
