@@ -20,7 +20,7 @@ export function ResearchProgress({ steps }: Props) {
         }
         return prev + 1;
       });
-    }, 2500);
+    }, 1400);
     return () => clearInterval(interval);
   }, [steps]);
 

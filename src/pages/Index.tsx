@@ -78,7 +78,7 @@ const Index = () => {
         // Replay the loading animation before revealing cached result
         setResearch(null);
         setResearching(true);
-        const delay = Math.max(cached.steps.length * 2500, 2000);
+        const delay = Math.min(cached.steps.length * 1400, 8000);
         setTimeout(() => {
           setResearch(cached.research);
           setResearching(false);
