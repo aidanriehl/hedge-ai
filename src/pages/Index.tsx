@@ -20,6 +20,7 @@ interface CachedResearch {
   research: ResearchResult;
   marketPrice?: number;
   marketCandidates?: MarketCandidate[];
+  steps: string[];
 }
 
 const Index = () => {
@@ -65,11 +66,17 @@ const Index = () => {
     setSelectedEvent(event);
     const cached = researchCache.current.get(event.event_ticker);
     if (cached) {
-      setResearch(cached.research);
+      // Replay the loading animation before revealing cached result
+      setResearch(null);
+      setResearching(true);
       setMarketPrice(cached.marketPrice);
       setMarketCandidates(cached.marketCandidates || []);
-      setResearching(false);
-      setResearchSteps([]);
+      setResearchSteps(cached.steps);
+      const delay = Math.max(cached.steps.length * 2500, 2000);
+      setTimeout(() => {
+        setResearch(cached.research);
+        setResearching(false);
+      }, delay);
       return;
     }
 
@@ -78,12 +85,16 @@ const Index = () => {
     setMarketPrice(undefined);
     setMarketCandidates([]);
     setResearchSteps([]);
+    let capturedSteps: string[] = [];
 
     // Fetch research steps in parallel with market price
     supabase.functions.invoke("bet-research", {
       body: { generateSteps: true, eventTitle: event.title, eventCategory: event.category || "General" },
     }).then(({ data }) => {
-      if (data?.steps) setResearchSteps(data.steps);
+      if (data?.steps) {
+        setResearchSteps(data.steps);
+        capturedSteps = data.steps;
+      }
     }).catch(() => {});
 
     let price: number | undefined;
@@ -114,7 +125,7 @@ const Index = () => {
     try {
       const result = await runBetResearch(event.title, event.category || "General", event.sub_title || "", price, candidates.length > 0 ? candidates : undefined);
       setResearch(result);
-      researchCache.current.set(event.event_ticker, { research: result, marketPrice: price, marketCandidates: candidates });
+      researchCache.current.set(event.event_ticker, { research: result, marketPrice: price, marketCandidates: candidates, steps: capturedSteps });
     } catch (err: any) {
       console.error("Research failed:", err);
       toast({ title: "Research failed", description: err.message || "Please try again.", variant: "destructive" });
@@ -140,7 +151,8 @@ const Index = () => {
       if (data?.categories) {
         const updated = { ...research, categories: [...research.categories, ...data.categories] };
         setResearch(updated);
-        researchCache.current.set(selectedEvent.event_ticker, { research: updated, marketPrice });
+        const existing = researchCache.current.get(selectedEvent.event_ticker);
+        researchCache.current.set(selectedEvent.event_ticker, { research: updated, marketPrice, steps: existing?.steps || [] });
       }
     } catch (err) {
       console.error("More research failed:", err);
