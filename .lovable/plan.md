@@ -1,46 +1,36 @@
 
 
-# Integrate Claude Opus 4.5 for Research and Chat
+# Move Price Below Title in Search Results
 
-## Overview
-Replace the main research analysis and chat models with Anthropic's Claude Opus 4.5, while keeping the fast/cheap models for step generation (Gemini Flash Lite) and image generation (Gemini Flash Image).
+## What changes
 
-## Step 1: Store the API Key
-Use the secure secrets tool to request your Anthropic API key. This will be stored securely and only accessible from backend functions.
+In the search results and hot bets lists, the price (e.g., "7c") currently sits to the right of the title. Move it below the title, matching the saved tab layout where outcome text appears underneath.
 
-## Step 2: Update the Backend Function
+## Layout change
 
-Modify `supabase/functions/bet-research/index.ts` to call the Anthropic Messages API directly for two modes:
+**Current:**
+```
+[icon]  Will Elon Musk visit Mars?          7c
+```
 
-**Main Research** (currently `google/gemini-2.5-flash`):
-- Call `https://api.anthropic.com/v1/messages` with `claude-opus-4-5-20250514`
-- Keep the same system prompt and JSON output format
-- Parse the response from Anthropic's format (`content[0].text`) instead of OpenAI format
+**New:**
+```
+[icon]  Will Elon Musk visit Mars?
+        No -- 7c
+```
 
-**Chat** (currently `openai/gpt-5-mini`):
-- Same Anthropic endpoint and model
-- Convert chat history to Anthropic's message format
-- Keep the same system prompt
+The price will show as "No -- X c" (since Kalshi yes_bid prices below 50 imply "No" is more likely) or "Yes -- X c" beneath the title, left-aligned under the text (not the icon), using the same styling pattern as the saved tab.
 
-**Unchanged:**
-- Step generation stays on `google/gemini-2.5-flash-lite` (fast, cheap)
-- More Research stays on `google/gemini-2.5-flash`
-- Image generation stays on `google/gemini-2.5-flash-image`
+## Technical details
 
-## Technical Details
+**File: `src/components/SearchScreen.tsx`**
 
-### Anthropic API differences from OpenAI format:
-- System prompt goes in a separate `system` field, not in messages array
-- Response is in `content[0].text` instead of `choices[0].message.content`
-- Uses `x-api-key` header instead of `Authorization: Bearer`
-- Uses `max_tokens` (required) instead of optional
-- Model ID: `claude-opus-4-5-20250514`
+Two places to update (search results list and hot bets list -- they share the same card markup):
 
-### Changes to `bet-research/index.ts`:
-- Add a helper function `callAnthropic(system, messages, maxTokens)` that handles the Anthropic API call
-- In the main research section: replace the Lovable AI gateway call with `callAnthropic()`
-- In the chat section: replace the gateway call with `callAnthropic()`, converting chat history format
-- Read `ANTHROPIC_API_KEY` from `Deno.env.get()`
+1. Remove `flex items-center` single-row layout for the text+price area
+2. Wrap title and price in a column div
+3. Move price below the title as a small label like `"No — 7¢"` or `"Yes — 93¢"` (show "Yes" if price >= 50, "No" with `100 - price` if under 50... or simply show "Yes" price as-is to match Kalshi convention)
+4. Style it with `text-xs font-semibold text-primary mt-0.5` to match the saved tab
 
-### No frontend changes needed
-The response format stays identical -- only the backend model changes.
+Since the screenshot shows `7c` which is a low yes price, the display will show the raw yes price (e.g., "7c") below the title, keeping it simple and consistent with Kalshi's convention. Format: just the price on a new line beneath the title, no "Yes/No" prefix needed to keep it clean -- or add "No" prefix if the user prefers. Based on the saved tab pattern showing "76% Yes", the format will be `Xc Yes` beneath the title.
+
