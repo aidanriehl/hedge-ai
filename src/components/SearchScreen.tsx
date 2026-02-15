@@ -108,10 +108,12 @@ export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Pr
                     <div className={`p-1.5 rounded-lg ${style.bg} flex-shrink-0`}>
                       <Icon className={`h-3.5 w-3.5 ${style.color}`} />
                     </div>
-                    <p className="font-medium text-foreground text-[14px] leading-snug flex-1">{event.title}</p>
-                    {yesPrice != null && (
-                      <span className="text-xs font-semibold text-primary flex-shrink-0">{yesPrice}¢</span>
-                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground text-[14px] leading-snug">{event.title}</p>
+                      {yesPrice != null && (
+                        <p className="text-xs font-semibold text-primary mt-0.5">{yesPrice}¢ Yes</p>
+                      )}
+                    </div>
                   </button>
                 );
               })}
@@ -139,13 +141,15 @@ export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Pr
                   onClick={() => onSelectEvent(event)}
                   className="w-full text-left px-4 py-3 bg-card rounded-xl border border-border hover:border-primary/30 transition-colors flex items-center gap-3"
                 >
-                  <div className={`p-1.5 rounded-lg ${style.bg} flex-shrink-0`}>
-                    <Icon className={`h-3.5 w-3.5 ${style.color}`} />
-                  </div>
-                  <p className="font-medium text-foreground text-[14px] leading-snug flex-1">{event.title}</p>
-                  {yesPrice != null && (
-                    <span className="text-xs font-semibold text-primary flex-shrink-0">{yesPrice}¢</span>
-                  )}
+                    <div className={`p-1.5 rounded-lg ${style.bg} flex-shrink-0`}>
+                      <Icon className={`h-3.5 w-3.5 ${style.color}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground text-[14px] leading-snug">{event.title}</p>
+                      {yesPrice != null && (
+                        <p className="text-xs font-semibold text-primary mt-0.5">{yesPrice}¢ Yes</p>
+                      )}
+                    </div>
                 </button>
               );
             })}
