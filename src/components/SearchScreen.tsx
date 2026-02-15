@@ -141,9 +141,12 @@ export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Pr
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-foreground text-[14px] leading-snug">{event.title}</p>
-                      {yesPrice != null && (
-                        <p className="text-xs font-semibold text-primary mt-0.5">{yesPrice}% Yes</p>
-                      )}
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[11px] text-muted-foreground">{event.category}</span>
+                        {yesPrice != null && (
+                          <span className="text-[11px] font-semibold text-primary">{yesPrice}% - Yes</span>
+                        )}
+                      </div>
                     </div>
                   </button>
                 );
@@ -176,9 +179,12 @@ export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Pr
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-foreground text-[14px] leading-snug">{event.title}</p>
-                      {yesPrice != null && (
-                        <p className="text-xs font-semibold text-primary mt-0.5">{yesPrice}% Yes</p>
-                      )}
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[11px] text-muted-foreground">{event.category}</span>
+                        {yesPrice != null && (
+                          <span className="text-[11px] font-semibold text-primary">{yesPrice}% - Yes</span>
+                        )}
+                      </div>
                     </div>
                 </button>
               );
