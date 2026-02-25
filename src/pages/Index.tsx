@@ -270,7 +270,7 @@ const Index = () => {
             {tab === "saved" && (
               <div className="space-y-2">
                 {savedEvents.length === 0 ? (
-                  <div className="py-48 text-center">
+                  <div className="py-52 text-center">
                     <Bookmark className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
                     <p className="text-muted-foreground text-sm">No saved bets yet</p>
                     <p className="text-muted-foreground/60 text-xs mt-1">Tap the bookmark icon to save bets</p>
