@@ -128,8 +128,13 @@ export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Pr
               {filtered.slice(0, 15).map((event) => {
                 const style = getIconForEvent(event.title, event.category);
                 const Icon = style.icon;
-                const market = event.markets?.[0];
-                const yesPrice = market?.yes_bid != null ? Math.round(market.yes_bid * 100) : null;
+                const markets = event.markets || [];
+                const isMultiCandidate = markets.length > 1;
+                const topMarket = isMultiCandidate
+                  ? markets.reduce((best, m) => (m.yes_bid ?? 0) > (best.yes_bid ?? 0) ? m : best, markets[0])
+                  : markets[0];
+                const yesPrice = topMarket?.yes_bid != null ? Math.round(topMarket.yes_bid * 100) : null;
+                const candidateName = isMultiCandidate && topMarket?.title ? topMarket.title : null;
                 return (
                   <button
                     key={event.event_ticker}
@@ -144,7 +149,9 @@ export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Pr
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <span className="text-[11px] text-muted-foreground">{event.category}</span>
                         {yesPrice != null && (
-                          <span className="text-[11px] font-semibold text-primary">Yes · {yesPrice}% on Kalshi</span>
+                          <span className="text-[11px] font-semibold text-primary">
+                            {candidateName ? `${candidateName} · ${yesPrice}%` : `Yes · ${yesPrice}% on Kalshi`}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -166,8 +173,13 @@ export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Pr
             {displayedHotEvents.map((event) => {
               const style = getIconForEvent(event.title, event.category);
               const Icon = style.icon;
-              const market = event.markets?.[0];
-              const yesPrice = market?.yes_bid != null ? Math.round(market.yes_bid * 100) : null;
+              const markets = event.markets || [];
+              const isMultiCandidate = markets.length > 1;
+              const topMarket = isMultiCandidate
+                ? markets.reduce((best, m) => (m.yes_bid ?? 0) > (best.yes_bid ?? 0) ? m : best, markets[0])
+                : markets[0];
+              const yesPrice = topMarket?.yes_bid != null ? Math.round(topMarket.yes_bid * 100) : null;
+              const candidateName = isMultiCandidate && topMarket?.title ? topMarket.title : null;
               return (
                 <button
                   key={event.event_ticker}
@@ -182,9 +194,11 @@ export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Pr
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <span className="text-[11px] text-muted-foreground">{event.category}</span>
                         {yesPrice != null && (
-                          <span className="text-[11px] font-semibold text-primary">Yes · {yesPrice}% on Kalshi</span>
+                          <span className="text-[11px] font-semibold text-primary">
+                            {candidateName ? `${candidateName} · ${yesPrice}%` : `Yes · ${yesPrice}% on Kalshi`}
+                          </span>
                         )}
-                      </div>
+                    </div>
                     </div>
                 </button>
               );
