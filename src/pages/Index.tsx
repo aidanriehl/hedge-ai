@@ -251,7 +251,7 @@ const Index = () => {
         <>
           <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-xl border-b border-border">
             <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
-              <h1 className="text-lg font-bold text-foreground">BetScope</h1>
+              <h1 className="text-lg font-bold text-foreground">Hedge AI</h1>
             </div>
           </header>
 
