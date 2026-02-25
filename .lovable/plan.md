@@ -2,33 +2,33 @@
 
 ## Problem
 
-Adding `with_nested_markets=true` to every paginated events request would increase payload size ~2-3x and add 1-2 seconds to initial load — unacceptable.
+The app uses Inter for everything, which makes it look like a generic template. The user wants a more distinctive, premium feel — especially for the "Hedge AI" logo and section headings.
 
-## Solution: Background Enrichment
+## Recommendation
 
-Load events fast first (no markets), then silently fetch market data in the background. Prices appear a moment after events load — no blocking.
+**Space Grotesk** — a modern geometric sans-serif with distinctive character shapes. It's free on Google Fonts, pairs well with Inter, and gives a fintech/data-forward vibe that fits a prediction market app. Other options: DM Sans (softer), Sora (techy), or Instrument Sans (editorial).
 
-### Changes
+## Changes
 
-#### 1. `src/lib/api.ts` — Add a background market-enriched fetch
+### 1. `src/index.css` — Add Space Grotesk import
 
-Add a new function `fetchAllKalshiEventsWithMarkets` that mirrors `fetchAllKalshiEvents` but passes `with_nested_markets=true`. The existing `fetchAllKalshiEvents` stays unchanged (fast initial load).
+Add `Space+Grotesk:wght@500;600;700` to the existing Google Fonts import.
 
-#### 2. `src/pages/Index.tsx` — Two-phase loading
+### 2. `tailwind.config.ts` — Add `font-display` family
 
-- Phase 1 (existing): Fetch events without markets → instant search works
-- Phase 2 (new): After phase 1 completes, trigger a background fetch with `with_nested_markets=true` and merge the market data into the existing events state
+Add a `display` font family entry: `['Space Grotesk', ...sans-serif]`.
 
-The user sees search results immediately. A moment later, candidate names and prices silently appear on those results.
+### 3. `src/pages/Index.tsx` — Apply to logo
 
-#### 3. `supabase/functions/kalshi-proxy/index.ts` — Support the param
+Change the "Hedge AI" `<h1>` to use `font-display` class.
 
-Pass through a `with_nested_markets` parameter when provided, so the proxy forwards it to Kalshi's API.
+### 4. `src/components/SearchScreen.tsx` — Apply to section headings
 
-### User Experience
+Add `font-display` to major headings like "Trending" and category headers.
 
-- Initial load speed: **unchanged**
-- Search results appear: **immediately** (same as today)
-- Candidate names/prices appear: **1-2 seconds after initial load**, silently in background
-- No spinners, no blocking, no degradation
+### 5. `src/components/ResearchResult.tsx` — Apply to research headings
+
+Add `font-display` to the research result title and category headings.
+
+This is a small change — just a font import, one Tailwind config line, and sprinkling `font-display` on ~5-8 heading elements.
 
