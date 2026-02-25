@@ -128,7 +128,7 @@ export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Pr
           placeholder={isLoading ? "Loading..." : "Search bet or topic"}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="pl-10 h-12 text-[15px] bg-card border border-border rounded-xl placeholder:text-muted-foreground"
+          className="pl-10 h-12 text-[15px] bg-card border border-border rounded-2xl placeholder:text-muted-foreground"
           disabled={isLoading}
         />
       </div>
@@ -209,7 +209,7 @@ export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Pr
                 <button
                   key={event.event_ticker}
                   onClick={() => onSelectEvent(event)}
-                  className="w-full text-left px-4 py-3 bg-card rounded-xl border border-border hover:border-primary/30 transition-colors flex items-center gap-3"
+                  className="w-full text-left px-4 py-3 bg-card rounded-xl border border-border hover:border-primary/30 hover:shadow-sm transition-all flex items-center gap-3"
                 >
                     <div className={`p-1.5 rounded-lg ${style.bg} flex-shrink-0`}>
                       <Icon className={`h-3.5 w-3.5 ${style.color}`} />
