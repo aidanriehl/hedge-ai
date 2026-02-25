@@ -157,7 +157,8 @@ export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Pr
                 const topMarket = isMultiCandidate
                   ? markets.reduce((best, m) => (m.yes_bid ?? 0) > (best.yes_bid ?? 0) ? m : best, markets[0])
                   : markets[0];
-                const yesPrice = topMarket?.yes_bid != null ? Math.round(topMarket.yes_bid * 100) : null;
+                const rawPrice = topMarket?.yes_bid;
+                const yesPrice = rawPrice != null ? (rawPrice > 1 ? Math.round(rawPrice) : Math.round(rawPrice * 100)) : null;
                 const candidateName = isMultiCandidate && topMarket ? (topMarket.yes_sub_title || topMarket.title || null) : null;
                 return (
                   <button
