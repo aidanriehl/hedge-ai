@@ -14,7 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      research_cache: {
+        Row: {
+          cache_ttl_hours: number
+          created_at: string
+          event_ticker: string
+          expires_at: string
+          id: string
+          image_url: string | null
+          research: Json
+          steps: Json | null
+        }
+        Insert: {
+          cache_ttl_hours?: number
+          created_at?: string
+          event_ticker: string
+          expires_at?: string
+          id?: string
+          image_url?: string | null
+          research: Json
+          steps?: Json | null
+        }
+        Update: {
+          cache_ttl_hours?: number
+          created_at?: string
+          event_ticker?: string
+          expires_at?: string
+          id?: string
+          image_url?: string | null
+          research?: Json
+          steps?: Json | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

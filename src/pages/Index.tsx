@@ -109,7 +109,7 @@ const Index = () => {
 
     // Fetch research steps in parallel with market price
     supabase.functions.invoke("bet-research", {
-      body: { generateSteps: true, eventTitle: event.title, eventCategory: event.category || "General" },
+      body: { generateSteps: true, eventTitle: event.title, eventCategory: event.category || "General", eventTicker: event.event_ticker },
     }).then(({ data }) => {
       if (data?.steps) {
         setResearchSteps(data.steps);
@@ -143,7 +143,7 @@ const Index = () => {
     } catch (e) { console.error("Could not fetch market price:", e); }
 
     try {
-      const result = await runBetResearch(event.title, event.category || "General", event.sub_title || "", price, candidates.length > 0 ? candidates : undefined);
+      const result = await runBetResearch(event.title, event.category || "General", event.sub_title || "", price, candidates.length > 0 ? candidates : undefined, event.event_ticker);
       setResearch(result);
       researchCache.current.set(event.event_ticker, { research: result, marketPrice: price, marketCandidates: candidates, steps: capturedSteps });
     } catch (err: any) {

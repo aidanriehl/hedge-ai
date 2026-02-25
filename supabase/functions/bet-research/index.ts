@@ -1,9 +1,42 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+function getSupabaseAdmin() {
+  return createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+}
+
+async function getCachedResearch(eventTicker: string) {
+  const sb = getSupabaseAdmin();
+  const { data } = await sb
+    .from("research_cache")
+    .select("*")
+    .eq("event_ticker", eventTicker)
+    .gt("expires_at", new Date().toISOString())
+    .maybeSingle();
+  return data;
+}
+
+async function upsertCache(eventTicker: string, research: any, steps: any, imageUrl: string | null, ttlHours: number) {
+  const sb = getSupabaseAdmin();
+  const expiresAt = new Date(Date.now() + ttlHours * 3600 * 1000).toISOString();
+  await sb.from("research_cache").upsert({
+    event_ticker: eventTicker,
+    research,
+    steps,
+    image_url: imageUrl,
+    cache_ttl_hours: ttlHours,
+    created_at: new Date().toISOString(),
+    expires_at: expiresAt,
+  }, { onConflict: "event_ticker" });
+}
 
 async function callAnthropic(system: string, messages: Array<{role: string; content: string}>, maxTokens = 4096) {
   const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
@@ -49,8 +82,21 @@ serve(async (req) => {
       );
     }
 
+    const eventTicker = body.eventTicker as string | undefined;
+
     // === GENERATE RESEARCH STEPS ===
     if (body.generateSteps) {
+      // Check cache for steps
+      if (eventTicker) {
+        const cached = await getCachedResearch(eventTicker);
+        if (cached?.steps) {
+          console.log(`Cache HIT (steps) for ${eventTicker}`);
+          return new Response(JSON.stringify({ steps: cached.steps }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
       const { eventTitle, eventCategory } = body;
       const stepsPrompt = `Given this prediction market bet: "${eventTitle}" (category: ${eventCategory || "General"}), generate 5-7 short research steps (3-6 words each) that sound specific to THIS bet. Write them as plain actions a normal person would understand — no jargon, no technical language.
 
@@ -93,6 +139,15 @@ Return ONLY a JSON array of strings. No other text.`;
         steps = ["Gathering data...", "Analyzing context...", "Evaluating factors...", "Forming estimate..."];
       }
 
+      // If we have a ticker and there's already a cache row, update steps
+      if (eventTicker) {
+        const sb = getSupabaseAdmin();
+        const { data: existing } = await sb.from("research_cache").select("id").eq("event_ticker", eventTicker).maybeSingle();
+        if (existing) {
+          await sb.from("research_cache").update({ steps }).eq("event_ticker", eventTicker);
+        }
+      }
+
       return new Response(JSON.stringify({ steps }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -113,13 +168,7 @@ Rules:
 - Be concise (1-3 sentences). Use simple language. Cite specific numbers when relevant.
 - Use your full knowledge — the research context is supplementary, not a constraint.`;
 
-      const messages = [
-        { role: "system", content: chatSystemPrompt },
-        ...(chatHistory || []).map((m: any) => ({ role: m.role, content: m.content })),
-      ];
-
-      // Filter out system message and convert for Anthropic
-      const anthropicMessages = messages
+      const anthropicMessages = (chatHistory || [])
         .filter((m: any) => m.role !== "system")
         .map((m: any) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content }));
 
@@ -200,6 +249,19 @@ Return ONLY valid JSON:
       );
     }
 
+    // Check cache first
+    if (eventTicker) {
+      const cached = await getCachedResearch(eventTicker);
+      if (cached) {
+        console.log(`Cache HIT (research) for ${eventTicker}, expires ${cached.expires_at}`);
+        const result = cached.research as any;
+        result.imageUrl = cached.image_url;
+        return new Response(JSON.stringify(result), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     const systemPrompt = `You are a prediction market analyst. Write for normal people — no jargon, no filler, no fancy words. 8th-grade reading level. Short sentences.
 
 RULES:
@@ -253,6 +315,10 @@ Respond with ONLY valid JSON:
     "reasoning": "1 sentence max. Plain English.",
     "confidence": "high" | "medium" | "low"
   },
+  "cacheTTLHours": <integer 1-168> — how many hours this research stays relevant.
+    Pick based on how fast the situation changes, NOT when the market closes.
+    Fast-moving news/sports → 1-4h. Slow political/science → 48-168h. Default 24h.
+    Examples: Super Bowl tomorrow → 1. "First trillionaire" → 168. Bitcoin price → 4. Election next month → 12.,
   "imagePrompt": "A short description of a relevant photo."
 }
 
@@ -330,8 +396,19 @@ Give me the key factors (one short bullet each with specific data) and your hone
       }
     }
 
-    research.imageUrl = imageUrl;
+    // Extract TTL and clean up response
+    const cacheTTLHours = research.cacheTTLHours || 24;
+    delete research.cacheTTLHours;
     delete research.imagePrompt;
+    research.imageUrl = imageUrl;
+
+    // Cache the result
+    if (eventTicker) {
+      const researchToCache = { ...research };
+      delete researchToCache.imageUrl; // stored separately
+      upsertCache(eventTicker, researchToCache, null, imageUrl, cacheTTLHours)
+        .catch(err => console.error("Cache upsert failed (non-fatal):", err));
+    }
 
     return new Response(JSON.stringify(research), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
