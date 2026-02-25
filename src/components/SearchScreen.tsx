@@ -74,7 +74,8 @@ export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Pr
       (e) =>
         e.title.toLowerCase().includes(q) ||
         e.category?.toLowerCase().includes(q) ||
-        e.sub_title?.toLowerCase().includes(q)
+        e.sub_title?.toLowerCase().includes(q) ||
+        e.markets?.some((m) => m.title?.toLowerCase().includes(q))
     );
   }, [events, query]);
 
