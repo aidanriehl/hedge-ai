@@ -64,15 +64,15 @@ export function ResearchResult({ research, marketPrice, marketCandidates }: Prop
         {hasCandidates ? (
           <>
             <div className="flex items-baseline gap-2 mb-1">
-              <span className="text-4xl font-bold text-foreground font-display">{topCandidatePct}%</span>
+              <span className="text-4xl font-bold text-foreground">{topCandidatePct}%</span>
               <span className="text-sm font-medium text-primary">{topCandidate!.name}</span>
             </div>
           </>
         ) : (
           <div className="flex items-baseline gap-3 mb-1">
             <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold text-primary font-display">Yes</span>
-              <span className="text-4xl font-bold text-foreground font-display">— {pct}%</span>
+              <span className="text-4xl font-bold text-primary">Yes</span>
+              <span className="text-4xl font-bold text-foreground">— {pct}%</span>
             </div>
             {marketPct != null && (
               <span className="text-sm text-muted-foreground font-medium ml-auto">Kalshi {marketPct}%</span>
