@@ -49,6 +49,22 @@ const KEYWORD_ICONS: { keywords: string[]; icon: React.ElementType; color: strin
   { keywords: ["real estate", "housing", "mortgage", "rent"], icon: Building2, color: "text-stone-600", bg: "bg-stone-100" },
 ];
 
+const SEARCH_SYNONYMS: Record<string, string[]> = {
+  tennis: ["atp", "wta", "wimbledon", "roland garros", "us open tennis", "australian open", "french open"],
+  basketball: ["nba", "ncaa basketball", "march madness", "wnba"],
+  soccer: ["premier league", "la liga", "champions league", "mls", "fifa", "world cup soccer"],
+  football: ["nfl", "super bowl", "touchdown"],
+  baseball: ["mlb", "world series"],
+  hockey: ["nhl", "stanley cup"],
+  golf: ["pga", "masters", "ryder cup"],
+  boxing: ["ufc", "mma", "fight"],
+  racing: ["f1", "formula 1", "nascar", "grand prix"],
+  crypto: ["bitcoin", "ethereum", "btc", "eth", "solana", "dogecoin"],
+  ai: ["artificial intelligence", "openai", "chatgpt", "gpt", "machine learning", "agi"],
+  elections: ["democrat", "republican", "gop", "presidential", "senate", "congress", "governor"],
+  weather: ["hurricane", "tornado", "temperature", "heat wave", "drought", "flood"],
+};
+
 function getIconForEvent(title: string, category: string) {
   const titleLower = title.toLowerCase();
   // Check keyword overrides first
@@ -70,12 +86,18 @@ export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Pr
   const filtered = useMemo(() => {
     if (!query) return [];
     const q = query.toLowerCase();
-    return events.filter(
-      (e) =>
-        e.title.toLowerCase().includes(q) ||
-        e.category?.toLowerCase().includes(q) ||
-        e.sub_title?.toLowerCase().includes(q) ||
-        e.markets?.some((m) => m.title?.toLowerCase().includes(q))
+    const searchTerms = [q];
+    for (const [key, synonyms] of Object.entries(SEARCH_SYNONYMS)) {
+      if (q.includes(key)) searchTerms.push(...synonyms);
+      if (synonyms.some(s => q.includes(s))) searchTerms.push(key);
+    }
+    return events.filter((e) =>
+      searchTerms.some(term =>
+        e.title.toLowerCase().includes(term) ||
+        e.category?.toLowerCase().includes(term) ||
+        e.sub_title?.toLowerCase().includes(term) ||
+        e.markets?.some((m) => m.title?.toLowerCase().includes(term))
+      )
     );
   }, [events, query]);
 
