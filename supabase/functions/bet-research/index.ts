@@ -50,7 +50,7 @@ async function callAnthropic(system: string, messages: Array<{role: string; cont
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "claude-opus-4-5-20251101",
+      model: "claude-sonnet-4-20250514",
       max_tokens: maxTokens,
       system,
       messages,
