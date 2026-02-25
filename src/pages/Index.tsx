@@ -229,7 +229,7 @@ const Index = () => {
           <main className="max-w-lg mx-auto px-4 py-4 space-y-4 pb-40">
             <div className="pb-2">
               <p className="text-xs text-primary font-semibold uppercase tracking-wide">{selectedEvent.category}</p>
-              <h2 className="text-xl font-bold text-foreground mt-1 leading-tight">{selectedEvent.title}</h2>
+              <h2 className="text-xl font-bold text-foreground mt-1 leading-tight font-display">{selectedEvent.title}</h2>
               {marketPrice != null && (
                 <p className="text-sm text-muted-foreground mt-1">Market: <span className="font-semibold text-foreground">{Math.round(marketPrice * 100)}¢ Yes</span></p>
               )}
@@ -262,7 +262,7 @@ const Index = () => {
         <>
           <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-xl border-b border-border">
             <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
-              <h1 className="text-lg font-bold text-foreground">Hedge AI</h1>
+              <h1 className="text-lg font-bold text-foreground font-display">Hedge AI</h1>
             </div>
           </header>
 
