@@ -17,26 +17,28 @@ serve(async (req) => {
     let limit = "200";
     let status = "open";
     let cursor = "";
+    let withNestedMarkets = false;
 
-    // Support both GET query params and POST body
     if (req.method === "GET") {
       const url = new URL(req.url);
       path = url.searchParams.get("path") || "/events";
       limit = url.searchParams.get("limit") || "100";
       status = url.searchParams.get("status") || "open";
       cursor = url.searchParams.get("cursor") || "";
+      withNestedMarkets = url.searchParams.get("with_nested_markets") === "true";
     } else {
       const body = await req.json();
       path = body.path || "/events";
       limit = body.limit || "100";
       status = body.status || "open";
       cursor = body.cursor || "";
+      withNestedMarkets = !!body.with_nested_markets;
     }
 
     const params = new URLSearchParams({ limit, status });
     if (cursor) params.set("cursor", cursor);
+    if (withNestedMarkets) params.set("with_nested_markets", "true");
 
-    // For single event/market lookups, don't add status param
     const isListEndpoint = path === "/events" || path === "/markets";
     const queryString = isListEndpoint ? `?${params.toString()}` : "";
     const kalshiUrl = `${KALSHI_BASE}${path}${queryString}`;
