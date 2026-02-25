@@ -118,7 +118,7 @@ export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Pr
   return (
     <div className="space-y-6 pb-20">
       <div className="pt-8 pb-2 text-center">
-        <h2 className="text-3xl font-bold text-foreground">Research Your Bet</h2>
+        <h2 className="text-3xl font-bold text-foreground font-display">Research Your Bet</h2>
         <p className="text-sm text-muted-foreground mt-2">Make more informed trades</p>
       </div>
 
@@ -192,7 +192,7 @@ export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Pr
         <div className="pt-2">
           <div className="flex items-center gap-2 mb-3">
             <Flame className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">Hottest Bets Right Now</h3>
+            <h3 className="text-sm font-semibold text-foreground font-display">Hottest Bets Right Now</h3>
           </div>
           <div className="space-y-1.5">
             {displayedHotEvents.map((event) => {
