@@ -158,7 +158,7 @@ export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Pr
                   ? markets.reduce((best, m) => (m.yes_bid ?? 0) > (best.yes_bid ?? 0) ? m : best, markets[0])
                   : markets[0];
                 const yesPrice = topMarket?.yes_bid != null ? Math.round(topMarket.yes_bid * 100) : null;
-                const candidateName = isMultiCandidate && topMarket?.title ? topMarket.title : null;
+                const candidateName = isMultiCandidate && topMarket ? (topMarket.yes_sub_title || topMarket.title || null) : null;
                 return (
                   <button
                     key={event.event_ticker}
@@ -203,7 +203,7 @@ export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Pr
                 ? markets.reduce((best, m) => (m.yes_bid ?? 0) > (best.yes_bid ?? 0) ? m : best, markets[0])
                 : markets[0];
               const yesPrice = topMarket?.yes_bid != null ? Math.round(topMarket.yes_bid * 100) : null;
-              const candidateName = isMultiCandidate && topMarket?.title ? topMarket.title : null;
+              const candidateName = isMultiCandidate && topMarket ? (topMarket.yes_sub_title || topMarket.title || null) : null;
               return (
                 <button
                   key={event.event_ticker}
