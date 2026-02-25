@@ -73,7 +73,8 @@ export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Pr
     return events.filter(
       (e) =>
         e.title.toLowerCase().includes(q) ||
-        e.category?.toLowerCase().includes(q)
+        e.category?.toLowerCase().includes(q) ||
+        e.sub_title?.toLowerCase().includes(q)
     );
   }, [events, query]);
 
@@ -101,7 +102,7 @@ export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Pr
       <div className="relative max-w-md mx-auto">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder={isLoading ? "Loading..." : "Search markets"}
+          placeholder={isLoading ? "Loading..." : "Search bet or topic"}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="pl-10 h-12 text-[15px] bg-card border border-border rounded-xl placeholder:text-muted-foreground"
