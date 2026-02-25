@@ -1,30 +1,19 @@
 
 
-## Analysis
+## Changes
 
-Currently, the app fetches only **100 events** from Kalshi in a single API call (`limit: "100"`). Kalshi has hundreds (sometimes 1000+) of open events, so users can't find many bets.
+### 1. Update placeholder text
+In `src/components/SearchScreen.tsx`, change the search input placeholder from `"Search markets"` to `"Search bet or topic"`.
 
-This is purely a data-fetching issue — no heavy computation is needed. The Kalshi API supports cursor-based pagination, and the proxy already passes the `cursor` parameter. We just need to loop through all pages.
+### 2. Searching by topic (e.g. "tennis")
+This **already works** with zero additional effort. The current filter does a simple `string.includes()` check against every event's `title` and `category`. Since all events are already loaded in memory (from the pagination change), searching "tennis" will instantly surface any bet with "tennis" in the title or category.
 
-## Plan
+No extra API calls, keyword indexing, or computing power needed — it's pure client-side string matching on ~1000 events, which is trivially fast.
 
-### 1. Update `fetchKalshiEvents` to paginate through ALL events
+The only edge case: if Kalshi titles don't literally contain "tennis" (e.g., a bet titled "Will Djokovic win Wimbledon?" without the word "tennis"). To handle that, we could optionally also search the `sub_title` field if available. This is a one-line addition to the filter.
 
-Modify `src/lib/api.ts` to add a new function `fetchAllKalshiEvents()` that loops through pages using the cursor until no more results are returned. Each page fetches 200 events (Kalshi's max per request). Accumulates all events into a single array.
-
-### 2. Update `src/pages/Index.tsx` to call the new function
-
-Replace the single `fetchKalshiEvents()` call in `loadEvents()` with the new `fetchAllKalshiEvents()` call. Remove the unused `loadingMore` state and cursor logic since we'll load everything upfront.
-
-### 3. Update the proxy to support higher limits
-
-Update `supabase/functions/kalshi-proxy/index.ts` to pass through whatever limit is requested (currently hardcoded default of "100", will use "200" per page).
-
-### Performance Notes
-
-- Each page is a lightweight JSON response (~50KB for 200 events)
-- Typically 3-6 API calls to get all events (600-1200 total)
-- All fetched in parallel-ish (sequential due to cursor, but fast — ~2-3 seconds total)
-- Events are stored in memory as a flat array for client-side filtering — no heavy computation, just string matching on search
-- The search input already limits display to 15 results, so rendering stays fast
+### Summary of code changes
+- **`src/components/SearchScreen.tsx`**: 
+  - Change placeholder to `"Search bet or topic"`
+  - Add `sub_title` to the search filter for broader topic matching
 
