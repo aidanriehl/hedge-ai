@@ -2,58 +2,33 @@
 
 ## Problem
 
-Kalshi tennis bets use terms like "ATP", "WTA", "Wimbledon", "Roland Garros" — never the literal word "tennis." The same applies to many other sports and topics (e.g., searching "basketball" won't find "NBA" bets, "soccer" won't find "Premier League" bets).
+Adding `with_nested_markets=true` to every paginated events request would increase payload size ~2-3x and add 1-2 seconds to initial load — unacceptable.
 
-## Solution: Synonym/Keyword Expansion
+## Solution: Background Enrichment
 
-Add a synonym map so that when a user types a broad term, the search also checks related terms. This is zero-cost — pure client-side string matching, no extra API calls.
+Load events fast first (no markets), then silently fetch market data in the background. Prices appear a moment after events load — no blocking.
 
-### Changes to `src/components/SearchScreen.tsx`
+### Changes
 
-1. Add a `SEARCH_SYNONYMS` map at the top of the file:
-```typescript
-const SEARCH_SYNONYMS: Record<string, string[]> = {
-  tennis: ["atp", "wta", "wimbledon", "roland garros", "us open tennis", "australian open", "french open"],
-  basketball: ["nba", "ncaa basketball", "march madness", "wnba"],
-  soccer: ["premier league", "la liga", "champions league", "mls", "fifa", "world cup soccer"],
-  football: ["nfl", "super bowl", "touchdown"],
-  baseball: ["mlb", "world series"],
-  hockey: ["nhl", "stanley cup"],
-  golf: ["pga", "masters", "ryder cup"],
-  boxing: ["ufc", "mma", "fight"],
-  racing: ["f1", "formula 1", "nascar", "grand prix"],
-  crypto: ["bitcoin", "ethereum", "btc", "eth", "solana", "dogecoin"],
-  ai: ["artificial intelligence", "openai", "chatgpt", "gpt", "machine learning", "agi"],
-  elections: ["democrat", "republican", "gop", "presidential", "senate", "congress", "governor"],
-  weather: ["hurricane", "tornado", "temperature", "heat wave", "drought", "flood"],
-};
-```
+#### 1. `src/lib/api.ts` — Add a background market-enriched fetch
 
-2. Update the `filtered` useMemo to expand the search query with synonyms before matching:
-```typescript
-const filtered = useMemo(() => {
-  if (!query) return [];
-  const q = query.toLowerCase();
-  // Build list of terms to search: the query itself + any synonyms
-  const searchTerms = [q];
-  for (const [key, synonyms] of Object.entries(SEARCH_SYNONYMS)) {
-    if (q.includes(key)) searchTerms.push(...synonyms);
-    if (synonyms.some(s => q.includes(s))) searchTerms.push(key);
-  }
-  return events.filter((e) =>
-    searchTerms.some(term =>
-      e.title.toLowerCase().includes(term) ||
-      e.category?.toLowerCase().includes(term) ||
-      e.sub_title?.toLowerCase().includes(term) ||
-      e.markets?.some((m) => m.title?.toLowerCase().includes(term))
-    )
-  );
-}, [events, query]);
-```
+Add a new function `fetchAllKalshiEventsWithMarkets` that mirrors `fetchAllKalshiEvents` but passes `with_nested_markets=true`. The existing `fetchAllKalshiEvents` stays unchanged (fast initial load).
 
-### Performance
+#### 2. `src/pages/Index.tsx` — Two-phase loading
 
-- Still pure client-side string matching, just checking a few extra terms per search
-- No additional API calls
-- Negligible CPU cost — checking ~15 extra strings against ~1000 events is trivial
+- Phase 1 (existing): Fetch events without markets → instant search works
+- Phase 2 (new): After phase 1 completes, trigger a background fetch with `with_nested_markets=true` and merge the market data into the existing events state
+
+The user sees search results immediately. A moment later, candidate names and prices silently appear on those results.
+
+#### 3. `supabase/functions/kalshi-proxy/index.ts` — Support the param
+
+Pass through a `with_nested_markets` parameter when provided, so the proxy forwards it to Kalshi's API.
+
+### User Experience
+
+- Initial load speed: **unchanged**
+- Search results appear: **immediately** (same as today)
+- Candidate names/prices appear: **1-2 seconds after initial load**, silently in background
+- No spinners, no blocking, no degradation
 
