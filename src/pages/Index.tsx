@@ -52,6 +52,7 @@ const Index = () => {
         fetchAllKalshiEvents(),
         fetchHotEvents().catch(() => [] as KalshiEvent[]),
       ]);
+      console.log(`Loaded ${allEvents.length} events`);
       setEvents(allEvents);
       setHotEvents(hot);
     } catch (err) {
