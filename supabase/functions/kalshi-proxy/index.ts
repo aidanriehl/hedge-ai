@@ -14,7 +14,7 @@ serve(async (req) => {
 
   try {
     let path = "/events";
-    let limit = "100";
+    let limit = "200";
     let status = "open";
     let cursor = "";
 
