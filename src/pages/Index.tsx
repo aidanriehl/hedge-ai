@@ -5,7 +5,7 @@ import { ResearchResult as ResearchResultView } from "@/components/ResearchResul
 import { ResearchProgress } from "@/components/ResearchProgress";
 import { ResearchChat } from "@/components/ResearchChat";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { fetchKalshiEvents, fetchEventMarkets, runBetResearch, fetchHotEvents } from "@/lib/api";
+import { fetchAllKalshiEvents, fetchEventMarkets, runBetResearch, fetchHotEvents } from "@/lib/api";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { KalshiEvent, ResearchResult } from "@/types/kalshi";
@@ -48,11 +48,11 @@ const Index = () => {
   async function loadEvents() {
     try {
       setLoadingEvents(true);
-      const [result, hot] = await Promise.all([
-        fetchKalshiEvents(),
+      const [allEvents, hot] = await Promise.all([
+        fetchAllKalshiEvents(),
         fetchHotEvents().catch(() => [] as KalshiEvent[]),
       ]);
-      setEvents(result.events);
+      setEvents(allEvents);
       setHotEvents(hot);
     } catch (err) {
       console.error("Failed to load events:", err);
