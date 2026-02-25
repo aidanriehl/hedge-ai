@@ -13,33 +13,31 @@ serve(async (req) => {
   }
 
   try {
-    // 1. Fetch 100 open events
-    const eventsUrl = `${KALSHI_BASE}/events?limit=100&status=open`;
+    // Fetch events sorted by volume (most active first)
+    const eventsUrl = `${KALSHI_BASE}/events?limit=50&status=open&with_nested_markets=true`;
     const eventsRes = await fetch(eventsUrl, { headers: { Accept: "application/json" } });
     if (!eventsRes.ok) throw new Error(`Events fetch failed: ${eventsRes.status}`);
     const eventsData = await eventsRes.json();
     const events = eventsData.events || [];
 
-    // 2. Take first 20 events and fetch their market details in parallel
-    const top20 = events.slice(0, 10);
-    const detailResults = await Promise.allSettled(
-      top20.map(async (event: any) => {
-        const url = `${KALSHI_BASE}/events/${event.event_ticker}`;
-        const res = await fetch(url, { headers: { Accept: "application/json" } });
-        if (!res.ok) return null;
-        const data = await res.json();
-        // Kalshi returns event and markets as separate top-level keys
-        return { event: data.event, markets: data.markets || [] };
-      })
-    );
-
-    // 3. Compute total volume per event
+    // Compute total volume per event from nested markets
     const enriched: any[] = [];
-    for (const result of detailResults) {
-      if (result.status !== "fulfilled" || !result.value) continue;
-      const { event, markets } = result.value;
+    for (const event of events) {
+      const markets = event.markets || [];
       const totalVolume = markets.reduce((sum: number, m: any) => sum + (m.volume || 0), 0);
-      const firstMarket = markets[0];
+
+      // Return ALL markets so frontend can detect multi-candidate events
+      const mappedMarkets = markets.map((m: any) => ({
+        ticker: m.ticker,
+        event_ticker: m.event_ticker,
+        title: m.title || "",
+        yes_bid: m.yes_bid != null ? m.yes_bid / 100 : undefined,
+        yes_ask: m.yes_ask != null ? m.yes_ask / 100 : undefined,
+        yes_sub_title: m.yes_sub_title || "",
+        volume: m.volume,
+        status: m.status,
+      }));
+
       enriched.push({
         event_ticker: event.event_ticker,
         title: event.title,
@@ -47,22 +45,14 @@ serve(async (req) => {
         sub_title: event.sub_title || "",
         mutually_exclusive: event.mutually_exclusive || false,
         total_volume: totalVolume,
-        markets: firstMarket ? [{
-          ticker: firstMarket.ticker,
-          event_ticker: firstMarket.event_ticker,
-          title: firstMarket.title,
-          yes_bid: firstMarket.yes_bid != null ? firstMarket.yes_bid / 100 : undefined,
-          yes_ask: firstMarket.yes_ask != null ? firstMarket.yes_ask / 100 : undefined,
-          volume: firstMarket.volume,
-          status: firstMarket.status,
-        }] : [],
+        markets: mappedMarkets,
       });
     }
 
-    // 4. Sort by volume descending
+    // Sort by volume descending
     enriched.sort((a, b) => b.total_volume - a.total_volume);
 
-    // 5. Pick top 3 from unique categories
+    // Pick top 3 from unique categories
     const result: any[] = [];
     const usedCategories = new Set<string>();
     for (const event of enriched) {
