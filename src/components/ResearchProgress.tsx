@@ -26,9 +26,11 @@ export function ResearchProgress({ steps }: Props) {
 
   if (steps.length === 0) {
     return (
-      <div className="py-16 text-center">
-        <Loader2 className="h-8 w-8 text-primary animate-spin mx-auto mb-4" />
-        <p className="text-sm text-muted-foreground">Preparing research...</p>
+      <div className="py-6 space-y-3">
+        <div className="flex items-center gap-3 px-4 py-3 bg-card rounded-xl border border-border animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <Loader2 className="h-5 w-5 text-primary animate-spin flex-shrink-0" />
+          <span className="text-sm text-foreground font-medium">Analyzing bet details...</span>
+        </div>
       </div>
     );
   }
