@@ -5,7 +5,7 @@ import { ResearchResult as ResearchResultView } from "@/components/ResearchResul
 import { ResearchProgress } from "@/components/ResearchProgress";
 import { ResearchChat } from "@/components/ResearchChat";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { fetchAllKalshiEvents, fetchEventMarkets, runBetResearch, fetchHotEvents } from "@/lib/api";
+import { fetchAllKalshiEvents, fetchAllKalshiEventsWithMarkets, fetchEventMarkets, runBetResearch, fetchHotEvents } from "@/lib/api";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { KalshiEvent, ResearchResult } from "@/types/kalshi";
@@ -55,6 +55,17 @@ const Index = () => {
       console.log(`Loaded ${allEvents.length} events`);
       setEvents(allEvents);
       setHotEvents(hot);
+
+      // Phase 2: Background enrichment with market data
+      fetchAllKalshiEventsWithMarkets()
+        .then((enriched) => {
+          console.log(`Background enriched ${enriched.length} events with markets`);
+          setEvents((prev) => {
+            const enrichedMap = new Map(enriched.map((e) => [e.event_ticker, e]));
+            return prev.map((e) => enrichedMap.get(e.event_ticker) || e);
+          });
+        })
+        .catch((err) => console.error("Background market enrichment failed:", err));
     } catch (err) {
       console.error("Failed to load events:", err);
       toast({ title: "Failed to load markets", description: "Could not connect. Please try again.", variant: "destructive" });

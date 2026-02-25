@@ -1,9 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { KalshiEvent, ResearchResult } from "@/types/kalshi";
 
-export async function fetchKalshiEvents(cursor?: string, limit = "200"): Promise<{ events: KalshiEvent[]; cursor: string }> {
+export async function fetchKalshiEvents(cursor?: string, limit = "200", withNestedMarkets = false): Promise<{ events: KalshiEvent[]; cursor: string }> {
   const { data, error } = await supabase.functions.invoke("kalshi-proxy", {
-    body: { path: "/events", limit, status: "open", cursor: cursor || "" },
+    body: { path: "/events", limit, status: "open", cursor: cursor || "", with_nested_markets: withNestedMarkets },
   });
 
   if (error) throw new Error(error.message || "Failed to fetch events");
@@ -14,7 +14,18 @@ export async function fetchAllKalshiEvents(): Promise<KalshiEvent[]> {
   const allEvents: KalshiEvent[] = [];
   let cursor = "";
   do {
-    const result = await fetchKalshiEvents(cursor, "200");
+    const result = await fetchKalshiEvents(cursor, "200", false);
+    allEvents.push(...result.events);
+    cursor = result.cursor;
+  } while (cursor);
+  return allEvents;
+}
+
+export async function fetchAllKalshiEventsWithMarkets(): Promise<KalshiEvent[]> {
+  const allEvents: KalshiEvent[] = [];
+  let cursor = "";
+  do {
+    const result = await fetchKalshiEvents(cursor, "200", true);
     allEvents.push(...result.events);
     cursor = result.cursor;
   } while (cursor);
