@@ -4,6 +4,7 @@ import { SearchScreen } from "@/components/SearchScreen";
 import { ResearchResult as ResearchResultView } from "@/components/ResearchResult";
 import { ResearchProgress } from "@/components/ResearchProgress";
 import { ResearchChat } from "@/components/ResearchChat";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { fetchAllKalshiEvents, fetchAllKalshiEventsWithMarkets, fetchEventMarkets, runBetResearch, fetchHotEvents } from "@/lib/api";
 import { supabase } from "@/integrations/supabase/client";
@@ -221,9 +222,12 @@ const Index = () => {
                 <ArrowLeft className="h-5 w-5" />
                 <span className="text-sm">Back</span>
               </button>
-              <button onClick={() => toggleSave(selectedEvent.event_ticker)} className="ml-auto">
-                <Bookmark className={`h-5 w-5 ${savedTickers.has(selectedEvent.event_ticker) ? "fill-primary text-primary" : "text-chrome-foreground/60"}`} />
-              </button>
+              <div className="ml-auto flex items-center gap-2">
+                <button onClick={() => toggleSave(selectedEvent.event_ticker)}>
+                  <Bookmark className={`h-5 w-5 ${savedTickers.has(selectedEvent.event_ticker) ? "fill-primary text-primary" : "text-chrome-foreground/60"}`} />
+                </button>
+                <ThemeToggle />
+              </div>
             </div>
           </header>
           <main className="max-w-lg mx-auto px-4 py-4 space-y-4 pb-40">
@@ -263,6 +267,7 @@ const Index = () => {
           <header className="sticky top-0 z-50 bg-chrome border-b border-chrome/80">
             <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
               <h1 className="text-lg font-bold text-chrome-foreground">Hedge AI</h1>
+              <ThemeToggle />
             </div>
           </header>
 
