@@ -36,6 +36,9 @@
 
     --radius: 0.75rem;
 
+    --chrome: 220 13% 12%;
+    --chrome-foreground: 0 0% 95%;
+
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 

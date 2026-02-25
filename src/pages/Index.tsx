@@ -215,14 +215,14 @@ const Index = () => {
     <div className="min-h-screen bg-background safe-top safe-bottom">
       {selectedEvent ? (
         <>
-          <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-xl border-b border-border">
+          <header className="sticky top-0 z-50 bg-chrome border-b border-chrome/80">
             <div className="max-w-lg mx-auto px-4 h-14 flex items-center">
-              <button onClick={handleBack} className="flex items-center gap-2 text-primary font-medium">
+              <button onClick={handleBack} className="flex items-center gap-2 text-chrome-foreground font-medium">
                 <ArrowLeft className="h-5 w-5" />
                 <span className="text-sm">Back</span>
               </button>
               <button onClick={() => toggleSave(selectedEvent.event_ticker)} className="ml-auto">
-                <Bookmark className={`h-5 w-5 ${savedTickers.has(selectedEvent.event_ticker) ? "fill-primary text-primary" : "text-muted-foreground"}`} />
+                <Bookmark className={`h-5 w-5 ${savedTickers.has(selectedEvent.event_ticker) ? "fill-primary text-primary" : "text-chrome-foreground/60"}`} />
               </button>
             </div>
           </header>
@@ -260,9 +260,9 @@ const Index = () => {
         </>
       ) : (
         <>
-          <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-xl border-b border-border">
+          <header className="sticky top-0 z-50 bg-chrome border-b border-chrome/80">
             <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
-              <h1 className="text-lg font-bold text-foreground">Hedge AI</h1>
+              <h1 className="text-lg font-bold text-chrome-foreground">Hedge AI</h1>
             </div>
           </header>
 
@@ -324,18 +324,18 @@ const Index = () => {
             )}
           </main>
 
-          <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/90 backdrop-blur-xl border-t border-border safe-bottom">
+          <nav className="fixed bottom-0 left-0 right-0 z-50 bg-chrome border-t border-chrome/80 safe-bottom">
             <div className="max-w-lg mx-auto flex">
               <button
                 onClick={() => setTab("search")}
-                className={`flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium transition-colors ${tab === "search" ? "text-primary" : "text-muted-foreground"}`}
+                className={`flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium transition-colors ${tab === "search" ? "text-primary" : "text-chrome-foreground/50"}`}
               >
                 <TrendingUp className="h-5 w-5" />
                 Explore
               </button>
               <button
                 onClick={() => setTab("saved")}
-                className={`flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium transition-colors ${tab === "saved" ? "text-primary" : "text-muted-foreground"}`}
+                className={`flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium transition-colors ${tab === "saved" ? "text-primary" : "text-chrome-foreground/50"}`}
               >
                 <Bookmark className={`h-5 w-5 ${tab === "saved" ? "fill-primary" : ""}`} />
                 Saved
