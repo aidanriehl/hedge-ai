@@ -1,22 +1,25 @@
 
 
-## Improve Research Copy Quality
+## Fix Research Loading Animation Issues
 
-The user identified 5 specific writing problems in the AI research output. All fixes go into the system prompt in `supabase/functions/bet-research/index.ts` (lines 265-327).
+Two bugs identified in `ResearchProgress.tsx`:
 
-### Problems → Fixes
+### Problem 1: Flash of "Analyzing bet details..."
+When `steps` is empty (before the steps API returns), it shows "Analyzing bet details..." Then when steps arrive, that disappears and gets replaced by the real steps — causing a jarring flash/jump.
 
-1. **Vague language** ("closer than expected") — Add rule: never use vague qualifiers; always say specifically how close/far.
+**Fix**: Remove the empty-state fallback entirely. Instead, in `Index.tsx`, don't render `ResearchProgress` until steps have arrived. The bet title/category header is already visible, so there's no need for a placeholder.
 
-2. **Unexplained jargon** ("Artemis") — Add rule: always briefly explain niche terms inline (e.g. "NASA's Artemis program (their Moon landing plan)").
+### Problem 2: Last step spins for 10+ seconds
+The interval ticks every 1400ms and marks steps as "done" one by one, but stops at the last step (`prev >= steps.length - 1`). The last step just sits there spinning until the actual research API call finishes — which can take 10+ seconds while all other steps completed in ~1.4s each.
 
-3. **Findings don't tie back to the thesis** — This is the biggest issue. Add a structural rule: the probability reasoning states a thesis, and every bullet must explicitly connect back to supporting or challenging that thesis. No orphaned facts.
+**Fix**: Don't stop the interval at the last step. Let the last step also get its checkmark after 1400ms like the others. The spinner should only show on whichever step is currently "in progress." After all steps are checked off, show nothing (or a subtle "Finalizing..." if research hasn't returned yet). This way the pacing feels consistent.
 
-4. **Category titles use jargon** ("Hardware Status") — Add rule: category titles must be plain English that anyone would understand. "Hardware Status" → "Who Has the Better Rocket" or similar.
+### Files to change
+1. **`src/components/ResearchProgress.tsx`**:
+   - Remove the `steps.length === 0` fallback block
+   - Let the interval run through ALL steps (change `steps.length - 1` to `steps.length`)
+   - After all steps complete, show a small "Wrapping up..." spinner if the component is still mounted
 
-5. **Timid bolding** (only bolding "2030 target" instead of "China announced a 2030 target for crewed lunar landing") — Change bolding rule: bold the full meaningful phrase, not just a single number or word. Bold enough that someone skimming only the bold text gets the story.
-
-### Implementation
-
-Single edit to the system prompt in `supabase/functions/bet-research/index.ts`, adding/replacing rules in the RULES section (~lines 265-327). The "More Research" prompt (~line 191) will also get the same bolding and thesis-connection rules for consistency.
+2. **`src/pages/Index.tsx`**:
+   - Only render `<ResearchProgress>` when `researchSteps.length > 0` (line ~177): `{researching && researchSteps.length > 0 && <ResearchProgress steps={researchSteps} />}`
 
