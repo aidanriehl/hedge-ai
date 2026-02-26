@@ -254,7 +254,7 @@ const Index = () => {
                 <p className="text-sm text-muted-foreground mt-1">Market: <span className="font-semibold text-foreground">{Math.round(marketPrice * 100)}¢ Yes</span></p>
               )}
             </div>
-            {researching && <ResearchProgress steps={researchSteps} />}
+            {researching && researchSteps.length > 0 && <ResearchProgress steps={researchSteps} />}
             {research && (
               <>
                 <ResearchResultView research={research} marketPrice={marketPrice} marketCandidates={marketCandidates} />
