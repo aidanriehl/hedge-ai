@@ -49,12 +49,6 @@ export function ResearchProgress({ steps }: Props) {
           </div>
         );
       })}
-      {allDone && (
-        <div className="flex items-center gap-3 px-4 py-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <Loader2 className="h-4 w-4 text-muted-foreground animate-spin flex-shrink-0" />
-          <span className="text-sm text-muted-foreground">Wrapping up...</span>
-        </div>
-      )}
     </div>
   );
 }
