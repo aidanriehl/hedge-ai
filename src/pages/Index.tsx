@@ -99,20 +99,8 @@ const Index = () => {
       setMarketCandidates(cached.marketCandidates || []);
       setResearchSteps(cached.steps);
 
-      // Skip animation for bookmarked bets the user already viewed
-      if (savedTickers.has(event.event_ticker)) {
-        setResearch(cached.research);
-        setResearching(false);
-      } else {
-        // Replay the loading animation before revealing cached result
-        setResearch(null);
-        setResearching(true);
-        const delay = Math.min(cached.steps.length * 1400, 8000);
-        setTimeout(() => {
-          setResearch(cached.research);
-          setResearching(false);
-        }, delay);
-      }
+      setResearch(cached.research);
+      setResearching(false);
       return;
     }
 
