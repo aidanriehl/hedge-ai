@@ -115,8 +115,8 @@ const Index = () => {
     setResearchSteps([]);
     let capturedSteps: string[] = [];
 
-    // Fetch research steps in parallel with market price
-    supabase.functions.invoke("bet-research", {
+    // Fire all three requests in parallel
+    const stepsPromise = supabase.functions.invoke("bet-research", {
       body: { generateSteps: true, eventTitle: event.title, eventCategory: event.category || "General", eventTicker: event.event_ticker },
     }).then(({ data }) => {
       if (data?.steps) {
@@ -125,13 +125,11 @@ const Index = () => {
       }
     }).catch(() => {});
 
-    let price: number | undefined;
-    let candidates: MarketCandidate[] = [];
-    try {
-      const details = await fetchEventMarkets(event.event_ticker);
+    const marketPromise = fetchEventMarkets(event.event_ticker).then((details) => {
       const markets = details.markets || [];
+      let price: number | undefined;
+      let candidates: MarketCandidate[] = [];
       if (markets.length > 1) {
-        // Multi-candidate event — extract each candidate's price
         candidates = markets
           .filter(m => m.yes_bid != null && m.yes_bid > 0)
           .map(m => ({
@@ -148,12 +146,17 @@ const Index = () => {
         const market = markets[0];
         if (market?.yes_bid != null) { price = market.yes_bid; setMarketPrice(price); }
       }
-    } catch (e) { console.error("Could not fetch market price:", e); }
+      return { price, candidates };
+    }).catch((e) => { console.error("Could not fetch market price:", e); return { price: undefined, candidates: [] as MarketCandidate[] }; });
+
+    // Fire research immediately (DB cache doesn't need market price)
+    const researchPromise = runBetResearch(event.title, event.category || "General", event.sub_title || "", undefined, undefined, event.event_ticker);
 
     try {
-      const result = await runBetResearch(event.title, event.category || "General", event.sub_title || "", price, candidates.length > 0 ? candidates : undefined, event.event_ticker);
+      const [result, marketData] = await Promise.all([researchPromise, marketPromise]);
+      await stepsPromise;
       setResearch(result);
-      researchCache.current.set(event.event_ticker, { research: result, marketPrice: price, marketCandidates: candidates, steps: capturedSteps });
+      researchCache.current.set(event.event_ticker, { research: result, marketPrice: marketData.price, marketCandidates: marketData.candidates, steps: capturedSteps });
     } catch (err: any) {
       console.error("Research failed:", err);
       toast({ title: "Research failed", description: err.message || "Please try again.", variant: "destructive" });
