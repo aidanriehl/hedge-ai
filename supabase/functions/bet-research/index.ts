@@ -194,7 +194,10 @@ Details: ${eventDetails || "None"}
 You already covered these categories: ${existingCategories?.join(", ") || "unknown"}.
 
 Now provide 2-3 NEW research categories with findings that would MOST impact the odds. Focus on angles not yet covered. Same format rules:
-- Each finding is ONE sentence with a **specific** number, date, or name bolded.
+- Each finding is ONE sentence. Bold the FULL meaningful phrase, not just one word — someone skimming only bold text should get the story.
+- Every bullet must tie back to WHO WINS or WHAT HAPPENS. No orphaned facts.
+- Category titles must be plain English anyone would understand — no jargon or technical labels.
+- If you mention anything niche, explain it inline in plain English.
 - Be hyper-specific and data-driven.
 
 Return ONLY valid JSON:
@@ -266,13 +269,37 @@ Return ONLY valid JSON:
 
 RULES:
 - Give 4-8 findings grouped into 2-4 categories.
-- Each finding is ONE short sentence. Include a **specific** number, date, or name — bold the key part.
-- BAD: "Pope Francis has appointed 99 of the 137 current cardinal electors, significantly shaping the pool of potential successors."
-- GOOD: "**Pietro Parolin** has been Vatican's #2 for over 10 years — the longest-serving Secretary of State in decades."
-- Every bullet should clearly connect to WHO WINS or WHAT HAPPENS. If a fact doesn't obviously affect the outcome, don't include it.
+- Each finding is ONE short sentence.
+
+BOLDING — This is critical:
+- Bold the FULL meaningful phrase, not just a single word or number.
+- BAD: "China announced a **2030 target** for crewed lunar landing."
+- GOOD: "**China announced a 2030 target for crewed lunar landing** and is building a rocket specifically for it."
+- The test: if someone skims ONLY the bolded text, they should get the full story. Bold generously.
+
+NO VAGUE LANGUAGE:
+- NEVER use "closer than expected", "significant", "notable", "increasingly likely", "remains uncertain".
+- Always say specifically HOW close, HOW significant, by HOW much. Use numbers.
+- BAD: "This makes it closer than expected." GOOD: "China is only 4 years behind the US timeline."
+
+NO UNEXPLAINED JARGON:
+- If you mention something niche (a program name, technical term, acronym), explain it inline in plain English.
+- BAD: "Artemis III has slipped to 2026." GOOD: "NASA's Artemis program (their plan to land humans on the Moon) has slipped to 2026."
+- Category titles MUST be plain English anyone would understand. NO technical labels.
+- BAD: "Hardware Status", "Geopolitical Factors". GOOD: "Who Has the Better Rocket", "Why Politics Matters Here".
+
+THESIS CONNECTION — Most important rule:
+- Your probability reasoning states a thesis (e.g. "US lands first because X").
+- EVERY bullet must explicitly tie back to supporting or challenging that thesis. No orphaned facts.
+- If a bullet doesn't obviously help the reader understand WHY the probability is what it is, cut it.
+- The flow should feel like building an argument, not listing random facts.
+- BAD flow: "US will probably win" → "China landed 3 robots on the Moon" (reader: wait, so China wins?)
+- GOOD flow: "US will probably win" → "**China landed 3 robots on the Moon since 2013**, but none carried humans — they're still years behind on crewed flights."
+
+OTHER:
 - Skip obvious stuff. Lead with what changes the odds.
 - NEVER state something the reader already knows (e.g. "Elon Musk is rich", "Mars is far away"). Every bullet must add NEW information that shifts the probability.
-- Cut every word that doesn't add value. If you can remove a phrase without losing meaning, remove it. Example: "No human has traveled beyond 250,000 miles from Earth; Mars is 140 million miles away at closest approach" → "Mars is **140 million miles** away — no human has gone past **250,000**."
+- Cut every word that doesn't add value.
 - Be honest when evidence is weak.
 
 QUESTION TYPE HANDLING:
