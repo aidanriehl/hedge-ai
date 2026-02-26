@@ -59,7 +59,7 @@ export function ResearchResult({ research, marketPrice, marketCandidates }: Prop
           <img
             src={research.imageUrl}
             alt="Event illustration"
-            className="w-full h-48 object-cover"
+            className="w-full h-48 object-cover object-top"
           />
         </div>
       )}

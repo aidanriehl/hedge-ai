@@ -408,7 +408,7 @@ Give me the key factors (one short bullet each with specific data) and your hone
           body: JSON.stringify({
             model: "google/gemini-2.5-flash-image",
             messages: [
-              { role: "user", content: `Generate a photorealistic image: ${research.imagePrompt}. High quality, editorial style.` },
+              { role: "user", content: `Generate a photorealistic image in wide landscape 16:9 aspect ratio: ${research.imagePrompt}. High quality, editorial style, wide horizontal composition. Make sure faces and key subjects are fully visible and centered.` },
             ],
             modalities: ["image", "text"],
           }),
