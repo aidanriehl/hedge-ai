@@ -15,11 +15,9 @@ export function ResearchProgress({ steps, isComplete = false }: Props) {
     
     const interval = setInterval(() => {
       setCompletedCount((prev) => {
-        // Don't mark the last step as done until research is actually complete
-        const maxComplete = steps.length - 1;
-        if (prev >= maxComplete) {
+        if (prev >= steps.length) {
           clearInterval(interval);
-          return maxComplete;
+          return steps.length;
         }
         return prev + 1;
       });
@@ -32,12 +30,6 @@ export function ResearchProgress({ steps, isComplete = false }: Props) {
 
   return (
     <div className="py-6 space-y-3">
-      {steps.length === 0 && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-card rounded-xl border border-border animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <Loader2 className="h-5 w-5 text-primary animate-spin flex-shrink-0" />
-          <span className="text-sm text-foreground font-medium">Starting research...</span>
-        </div>
-      )}
       {steps.map((step, i) => {
         if (i > effectiveCompleted) return null;
         const isDone = i < effectiveCompleted;
