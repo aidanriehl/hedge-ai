@@ -38,13 +38,18 @@ function renderBoldText(text: string) {
 }
 
 export function ResearchResult({ research, marketPrice, marketCandidates }: Props) {
-  const pct = Math.round(research.probability.estimate * 100);
   const marketPct = marketPrice != null ? Math.round(marketPrice * 100) : null;
-  const gap = marketPct != null ? pct - marketPct : null;
   const hasCandidates = research.candidates && research.candidates.length > 0;
   const hasMarketCandidates = marketCandidates && marketCandidates.length > 1;
+
+  // For candidates, use market data if available, otherwise fall back to AI
+  const topMarketCandidate = hasMarketCandidates ? marketCandidates![0] : null;
   const topCandidate = hasCandidates ? research.candidates![0] : null;
-  const topCandidatePct = topCandidate ? Math.round(topCandidate.probability * 100) : null;
+  const displayName = topMarketCandidate?.name || topCandidate?.name;
+  const displayPct = topMarketCandidate ? Math.round(topMarketCandidate.price * 100) : (topCandidate ? Math.round(topCandidate.probability * 100) : null);
+
+  // For binary bets, use Kalshi market price
+  const displayYesPct = marketPct ?? Math.round(research.probability.estimate * 100);
 
   return (
     <div className="space-y-3">
@@ -61,22 +66,15 @@ export function ResearchResult({ research, marketPrice, marketCandidates }: Prop
 
       {/* Probability card */}
       <div className="bg-card rounded-2xl border border-border p-5">
-        {hasCandidates ? (
-          <>
-            <div className="flex items-baseline gap-2 mb-1">
-              <span className="text-4xl font-bold text-foreground">{topCandidatePct}%</span>
-              <span className="text-sm font-medium text-primary">{topCandidate!.name}</span>
-            </div>
-          </>
+        {hasCandidates && displayName ? (
+          <div className="flex items-baseline gap-2 mb-1">
+            <span className="text-4xl font-bold text-foreground">{displayPct}%</span>
+            <span className="text-sm font-medium text-primary">{displayName}</span>
+          </div>
         ) : (
-          <div className="flex items-baseline gap-3 mb-1">
-            <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold text-primary">Yes</span>
-              <span className="text-4xl font-bold text-foreground">— {pct}%</span>
-            </div>
-            {marketPct != null && (
-              <span className="text-sm text-muted-foreground font-medium ml-auto">Kalshi {marketPct}%</span>
-            )}
+          <div className="flex items-baseline gap-2 mb-1">
+            <span className="text-4xl font-bold text-primary">Yes</span>
+            <span className="text-4xl font-bold text-foreground">— {displayYesPct}%</span>
           </div>
         )}
 
@@ -84,16 +82,18 @@ export function ResearchResult({ research, marketPrice, marketCandidates }: Prop
       </div>
 
       {/* Candidates (for "who will" questions) */}
-      {research.candidates && research.candidates.length > 0 && (
+
+      {/* Candidate market prices */}
+      {hasMarketCandidates && (
         <div className="bg-card rounded-2xl border border-border p-5">
-          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-3">Top Candidates</p>
+          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-3">Market Prices</p>
           <div className="space-y-3">
-            {research.candidates.map((c, i) => {
-              const cpct = Math.round(c.probability * 100);
+            {marketCandidates!.sort((a, b) => b.price - a.price).map((mc, i) => {
+              const cpct = Math.round(mc.price * 100);
               return (
                 <div key={i}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[14px] text-foreground font-semibold">{c.name}</span>
+                    <span className="text-[14px] text-foreground font-semibold">{mc.name}</span>
                     <span className="text-[14px] font-bold text-primary">{cpct}%</span>
                   </div>
                   <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
@@ -105,72 +105,6 @@ export function ResearchResult({ research, marketPrice, marketCandidates }: Prop
                 </div>
               );
             })}
-          </div>
-        </div>
-      )}
-
-      {/* Kalshi vs AI comparison for candidate questions */}
-      {hasCandidates && hasMarketCandidates && (
-        <div className="bg-card rounded-2xl border border-border p-5">
-          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-3">Kalshi vs BetScope</p>
-          <div className="space-y-2.5">
-            {/* Header row */}
-            <div className="flex items-center text-[11px] text-muted-foreground font-medium uppercase tracking-wide mb-1">
-              <span className="flex-1">Candidate</span>
-              <span className="w-16 text-right">Kalshi</span>
-              <span className="w-16 text-right">AI</span>
-              <span className="w-14 text-right">Diff</span>
-            </div>
-            {/* Merge candidates: use AI list as base, match with market */}
-            {research.candidates!.map((aiC, i) => {
-              const aiPct = Math.round(aiC.probability * 100);
-              // Find matching market candidate (fuzzy match on name)
-              const marketMatch = marketCandidates!.find(mc =>
-                mc.name.toLowerCase().includes(aiC.name.toLowerCase().split(" ")[0]) ||
-                aiC.name.toLowerCase().includes(mc.name.toLowerCase().split(" ")[0])
-              );
-              const kalshiPct = marketMatch ? Math.round(marketMatch.price * 100) : null;
-              const diff = kalshiPct != null ? aiPct - kalshiPct : null;
-
-              return (
-                <div key={i} className="flex items-center py-1.5 border-t border-border/50 first:border-t-0">
-                  <span className="flex-1 text-[13px] text-foreground font-medium truncate pr-2">{aiC.name}</span>
-                  <span className="w-16 text-right text-[13px] text-muted-foreground font-semibold">
-                    {kalshiPct != null ? `${kalshiPct}%` : "—"}
-                  </span>
-                  <span className="w-16 text-right text-[13px] text-primary font-semibold">{aiPct}%</span>
-                  <span className={`w-14 text-right text-[12px] font-bold ${
-                    diff != null && Math.abs(diff) >= 5
-                      ? diff > 0 ? "text-green-600" : "text-red-500"
-                      : "text-muted-foreground"
-                  }`}>
-                    {diff != null ? `${diff > 0 ? "+" : ""}${diff}` : "—"}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Kalshi vs AI comparison for binary bets */}
-      {!hasCandidates && marketPct != null && gap != null && (
-        <div className="bg-card rounded-2xl border border-border p-5">
-          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-3">Kalshi vs BetScope</p>
-          <div className="flex items-center justify-between">
-            <div className="text-center flex-1">
-              <p className="text-2xl font-bold text-muted-foreground">{marketPct}%</p>
-              <p className="text-[11px] text-muted-foreground mt-1">Kalshi</p>
-            </div>
-            <div className={`text-center px-4 py-1 rounded-full text-sm font-bold ${
-              Math.abs(gap) >= 10 ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
-            }`}>
-              {gap > 0 ? "+" : ""}{gap}
-            </div>
-            <div className="text-center flex-1">
-              <p className="text-2xl font-bold text-primary">{pct}%</p>
-              <p className="text-[11px] text-primary mt-1">BetScope AI</p>
-            </div>
           </div>
         </div>
       )}

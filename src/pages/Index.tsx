@@ -325,7 +325,7 @@ const Index = () => {
                           </p>
                          ) : summary?.probability != null ? (
                           <p className="text-[11px] font-semibold text-primary mt-1 pl-[52px]">
-                            {Math.round(summary.probability * 100)}% chance on Kalshi
+                            {Math.round(summary.probability * 100)}% chance
                           </p>
                         ) : null}
                       </button>
