@@ -113,18 +113,8 @@ const Index = () => {
     setMarketPrice(undefined);
     setMarketCandidates([]);
     setResearchSteps([]);
-    let capturedSteps: string[] = [];
 
-    // Fire all three requests in parallel
-    const stepsPromise = supabase.functions.invoke("bet-research", {
-      body: { generateSteps: true, eventTitle: event.title, eventCategory: event.category || "General", eventTicker: event.event_ticker },
-    }).then(({ data }) => {
-      if (data?.steps) {
-        setResearchSteps(data.steps);
-        capturedSteps = data.steps;
-      }
-    }).catch(() => {});
-
+    // Fire market fetch in background — never blocks research display
     const marketPromise = fetchEventMarkets(event.event_ticker).then((details) => {
       const markets = details.markets || [];
       let price: number | undefined;
@@ -149,17 +139,46 @@ const Index = () => {
       return { price, candidates };
     }).catch((e) => { console.error("Could not fetch market price:", e); return { price: undefined, candidates: [] as MarketCandidate[] }; });
 
-    // Fire research immediately (DB cache doesn't need market price)
+    // Fire research request
     const researchPromise = runBetResearch(event.title, event.category || "General", event.sub_title || "", undefined, undefined, event.event_ticker);
 
     try {
-      const [result, marketData] = await Promise.all([researchPromise, marketPromise]);
-      setResearch(result);
-      researchCache.current.set(event.event_ticker, { research: result, marketPrice: marketData.price, marketCandidates: marketData.candidates, steps: capturedSteps });
+      // Await research first — don't wait for market
+      const result = await researchPromise;
+
+      // If backend returned cached steps, use them and skip progress animation
+      if (result.cacheMeta?.hit) {
+        setResearching(false);
+        setResearch(result);
+        if (result.cacheMeta.steps?.length) {
+          setResearchSteps(result.cacheMeta.steps);
+        }
+      } else {
+        // Non-cached: fire steps request now
+        supabase.functions.invoke("bet-research", {
+          body: { generateSteps: true, eventTitle: event.title, eventCategory: event.category || "General", eventTicker: event.event_ticker },
+        }).then(({ data }) => {
+          if (data?.steps) setResearchSteps(data.steps);
+        }).catch(() => {});
+
+        setResearch(result);
+        setResearching(false);
+      }
+
+      // Update in-memory cache immediately with research
+      researchCache.current.set(event.event_ticker, { research: result, marketPrice: undefined, marketCandidates: [], steps: result.cacheMeta?.steps || [] });
+
+      // When market data arrives, patch cache
+      marketPromise.then((marketData) => {
+        const existing = researchCache.current.get(event.event_ticker);
+        if (existing) {
+          existing.marketPrice = marketData.price;
+          existing.marketCandidates = marketData.candidates;
+        }
+      });
     } catch (err: any) {
       console.error("Research failed:", err);
       toast({ title: "Research failed", description: err.message || "Please try again.", variant: "destructive" });
-    } finally {
       setResearching(false);
     }
   }

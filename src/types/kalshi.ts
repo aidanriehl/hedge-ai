@@ -63,4 +63,5 @@ export interface ResearchResult {
   candidates?: Candidate[];
   thresholds?: Threshold[];
   imageUrl?: string | null;
+  cacheMeta?: { hit?: boolean; steps?: string[] };
 }

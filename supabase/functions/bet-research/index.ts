@@ -139,12 +139,21 @@ Return ONLY a JSON array of strings. No other text.`;
         steps = ["Gathering data...", "Analyzing context...", "Evaluating factors...", "Forming estimate..."];
       }
 
-      // If we have a ticker and there's already a cache row, update steps
+      // Persist steps — upsert so they're never lost
       if (eventTicker) {
         const sb = getSupabaseAdmin();
         const { data: existing } = await sb.from("research_cache").select("id").eq("event_ticker", eventTicker).maybeSingle();
         if (existing) {
           await sb.from("research_cache").update({ steps }).eq("event_ticker", eventTicker);
+        } else {
+          // Create a placeholder row so steps aren't lost if research finishes later
+          await sb.from("research_cache").insert({
+            event_ticker: eventTicker,
+            steps,
+            research: {},
+            cache_ttl_hours: 1,
+            expires_at: new Date(Date.now() + 3600 * 1000).toISOString(),
+          });
         }
       }
 
@@ -259,6 +268,7 @@ Return ONLY valid JSON:
         console.log(`Cache HIT (research) for ${eventTicker}, expires ${cached.expires_at}`);
         const result = cached.research as any;
         result.imageUrl = cached.image_url;
+        result.cacheMeta = { hit: true, steps: cached.steps ?? [] };
         return new Response(JSON.stringify(result), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -429,11 +439,14 @@ Give me the key factors (one short bullet each with specific data) and your hone
     delete research.imagePrompt;
     research.imageUrl = imageUrl;
 
-    // Cache the result
+    // Cache the result — preserve existing steps
     if (eventTicker) {
       const researchToCache = { ...research };
       delete researchToCache.imageUrl; // stored separately
-      upsertCache(eventTicker, researchToCache, null, imageUrl, cacheTTLHours)
+      const sb = getSupabaseAdmin();
+      const { data: existingRow } = await sb.from("research_cache").select("steps").eq("event_ticker", eventTicker).maybeSingle();
+      const existingSteps = existingRow?.steps ?? null;
+      upsertCache(eventTicker, researchToCache, existingSteps, imageUrl, cacheTTLHours)
         .catch(err => console.error("Cache upsert failed (non-fatal):", err));
     }
 
