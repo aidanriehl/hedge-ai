@@ -14,7 +14,7 @@ export function ResearchProgress({ steps }: Props) {
     
     const interval = setInterval(() => {
       setCompletedCount((prev) => {
-        if (prev >= steps.length - 1) {
+        if (prev >= steps.length) {
           clearInterval(interval);
           return prev;
         }
@@ -24,20 +24,12 @@ export function ResearchProgress({ steps }: Props) {
     return () => clearInterval(interval);
   }, [steps]);
 
-  if (steps.length === 0) {
-    return (
-      <div className="py-6 space-y-3">
-        <div className="flex items-center gap-3 px-4 py-3 bg-card rounded-xl border border-border animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <Loader2 className="h-5 w-5 text-primary animate-spin flex-shrink-0" />
-          <span className="text-sm text-foreground font-medium">Analyzing bet details...</span>
-        </div>
-      </div>
-    );
-  }
+  const allDone = completedCount >= steps.length;
 
   return (
     <div className="py-6 space-y-3">
-      {steps.slice(0, completedCount + 1).map((step, i) => {
+      {steps.map((step, i) => {
+        if (i > completedCount) return null;
         const isDone = i < completedCount;
         return (
           <div
@@ -57,6 +49,12 @@ export function ResearchProgress({ steps }: Props) {
           </div>
         );
       })}
+      {allDone && (
+        <div className="flex items-center gap-3 px-4 py-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <Loader2 className="h-4 w-4 text-muted-foreground animate-spin flex-shrink-0" />
+          <span className="text-sm text-muted-foreground">Wrapping up...</span>
+        </div>
+      )}
     </div>
   );
 }
