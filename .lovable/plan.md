@@ -1,35 +1,32 @@
 
-Root cause confirmed (from code + logs + DB):
-1) Cached research is being hit in backend (log: Cache HIT research for KXPRIMEENGCONSUMPTION-30), but UI still waits because `handleSelectEvent` blocks on `Promise.all([researchPromise, marketPromise])` before `setResearch`.
-2) Steps cache has race condition: in `bet-research` generateSteps only persists steps if cache row already exists; first-time flow often generates steps before research row insert, so row saved with `steps=null` (confirmed in `research_cache` rows), causing extra steps-generation on later “cached” opens.
-3) Frontend “instant cache” only checks in-memory `researchCache` map, not persistent backend cache metadata, so page reload/session change loses instant behavior.
 
-Implementation plan:
-1) `supabase/functions/bet-research/index.ts`
-- On cache hit for main research, return:
-  - `...research`
-  - `cacheMeta: { hit: true, steps: cached.steps ?? [] }`
-- In `generateSteps` branch, if cache row missing, write a lightweight row with `event_ticker`, `steps`, and short TTL placeholder so steps are never dropped; if row exists, update steps as today.
-- When doing final `upsertCache` after fresh research, preserve existing `steps` if present (don’t overwrite with null).
+## Plan: Remove shared database cache, keep per-user localStorage only
 
-2) `src/types/kalshi.ts`
-- Extend `ResearchResult` with optional `cacheMeta?: { hit?: boolean; steps?: string[] }`.
+**What changes and why:**  
+The backend `research_cache` table currently serves the same research to every user. We'll remove the backend cache lookup for main research so every user gets a fresh AI-generated analysis. localStorage (per-device) still provides instant reload for the same user.
 
-3) `src/pages/Index.tsx` (`handleSelectEvent`)
-- Start market fetch independently, but do not gate first render on it.
-- Await `researchPromise` first; immediately `setResearch(result)` on resolve.
-- If `result.cacheMeta?.steps?.length`, set `researchSteps` from it and skip calling `generateSteps`.
-- Only call `generateSteps` when no cached steps are provided.
-- Keep market request in background; update `marketPrice` / `marketCandidates` when it finishes.
-- Persist in-memory cache immediately after research resolve, then patch market fields when market fetch returns.
+### Changes
 
-4) `src/pages/Index.tsx` cache fast-path hardening
-- Keep current in-memory fast-path, but ensure it never sets `researching=true` for known cached items.
-- Add dedupe guard for repeated clicks on same ticker while request in flight.
+**1) `supabase/functions/bet-research/index.ts` — Remove cache hit for main research**
+- Delete the "Check cache first" block (lines 264-276) that returns cached research from the database.
+- Keep the `upsertCache` call at the end — it still stores steps for the generateSteps endpoint, which is fine (steps are just UX loading labels, not the actual research content).
+- Keep the `generateSteps` cache logic as-is (reusing step labels across users is fine since they're just progress indicators like "Check injury reports").
 
-5) Validation checklist (must all pass before closing)
-- A previously cached ticker opens immediately after tap (research cards render before market price request completes).
-- No progress pills show for cached opens (including after full page refresh).
-- `research_cache.steps` remains populated for newly researched events (no new rows with null steps after first run).
-- Non-cached opens still show progressive steps and complete normally.
-- Reopen same event 3 times in a row: no regressions, no “blank waiting” state.
+**2) `src/pages/Index.tsx` — Remove `cacheMeta.hit` fast-path from backend**
+- The backend will no longer return `cacheMeta.hit = true`, so the special branch (lines 177-183) that skips progress animation for backend-cached results will never trigger.
+- Simplify: remove the `if (result.cacheMeta?.hit)` branch. Always fire the steps request and show progress animation for network-fetched research.
+- Keep the in-memory + localStorage cache paths (lines 115-136) — these are per-user and should remain.
+
+**3) `supabase/functions/bet-research/index.ts` — Stop returning `cacheMeta` on main research**
+- At the end of fresh research generation, remove `result.cacheMeta` from the response (it was only used to signal cache hits).
+
+### Files modified
+- `supabase/functions/bet-research/index.ts` — remove cache-hit return block for main research
+- `src/pages/Index.tsx` — remove `cacheMeta.hit` branch, always show progress for network requests
+
+### What stays the same
+- localStorage per-device caching (instant on revisit for same user)
+- In-memory cache (instant within same session)
+- Steps caching in DB (just progress labels, not research content)
+- Image generation, chat, more-research endpoints — unchanged
+
