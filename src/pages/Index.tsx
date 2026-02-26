@@ -95,15 +95,42 @@ const Index = () => {
     }
   }
 
+  function loadFromLocalStorage(ticker: string): CachedResearch | null {
+    try {
+      const raw = localStorage.getItem(`hedge_research_${ticker}`);
+      if (!raw) return null;
+      return JSON.parse(raw) as CachedResearch;
+    } catch { return null; }
+  }
+
+  function saveToLocalStorage(ticker: string, data: CachedResearch) {
+    try {
+      localStorage.setItem(`hedge_research_${ticker}`, JSON.stringify(data));
+    } catch { /* quota exceeded — ignore */ }
+  }
+
   async function handleSelectEvent(event: KalshiEvent) {
     setSelectedEvent(event);
+
+    // 1) In-memory cache (fastest)
     const cached = researchCache.current.get(event.event_ticker);
     if (cached) {
       setMarketPrice(cached.marketPrice);
       setMarketCandidates(cached.marketCandidates || []);
       setResearchSteps(cached.steps);
-
       setResearch(cached.research);
+      setResearching(false);
+      return;
+    }
+
+    // 2) localStorage cache (survives refresh)
+    const lsCached = loadFromLocalStorage(event.event_ticker);
+    if (lsCached) {
+      researchCache.current.set(event.event_ticker, lsCached);
+      setMarketPrice(lsCached.marketPrice);
+      setMarketCandidates(lsCached.marketCandidates || []);
+      setResearchSteps(lsCached.steps);
+      setResearch(lsCached.research);
       setResearching(false);
       return;
     }
@@ -166,7 +193,9 @@ const Index = () => {
       }
 
       // Update in-memory cache immediately with research
-      researchCache.current.set(event.event_ticker, { research: result, marketPrice: undefined, marketCandidates: [], steps: result.cacheMeta?.steps || [] });
+      const cacheEntry: CachedResearch = { research: result, marketPrice: undefined, marketCandidates: [], steps: result.cacheMeta?.steps || [] };
+      researchCache.current.set(event.event_ticker, cacheEntry);
+      saveToLocalStorage(event.event_ticker, cacheEntry);
 
       // When market data arrives, patch cache
       marketPromise.then((marketData) => {
@@ -174,6 +203,7 @@ const Index = () => {
         if (existing) {
           existing.marketPrice = marketData.price;
           existing.marketCandidates = marketData.candidates;
+          saveToLocalStorage(event.event_ticker, existing);
         }
       });
     } catch (err: any) {
