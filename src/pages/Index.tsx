@@ -28,6 +28,7 @@ const Index = () => {
   const [events, setEvents] = useState<KalshiEvent[]>([]);
   const [hotEvents, setHotEvents] = useState<KalshiEvent[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
+  const [loadingHot, setLoadingHot] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<KalshiEvent | null>(null);
   const [researching, setResearching] = useState(false);
   const [research, setResearch] = useState<ResearchResult | null>(null);
@@ -63,15 +64,18 @@ const Index = () => {
   useEffect(() => { localStorage.setItem("betscope_saved", JSON.stringify([...savedTickers])); }, [savedTickers]);
 
   async function loadEvents() {
+    // Fetch hot events independently so they appear instantly
+    setLoadingHot(true);
+    fetchHotEvents()
+      .then((hot) => { setHotEvents(hot); })
+      .catch(() => { setHotEvents([]); })
+      .finally(() => { setLoadingHot(false); });
+
     try {
       setLoadingEvents(true);
-      const [allEvents, hot] = await Promise.all([
-        fetchAllKalshiEvents(),
-        fetchHotEvents().catch(() => [] as KalshiEvent[]),
-      ]);
+      const allEvents = await fetchAllKalshiEvents();
       console.log(`Loaded ${allEvents.length} events`);
       setEvents(allEvents);
-      setHotEvents(hot);
 
       // Phase 2: Background enrichment with market data
       fetchAllKalshiEventsWithMarkets()
@@ -329,7 +333,7 @@ const Index = () => {
             )}
 
             {tab === "search" && (
-              <SearchScreen events={events} hotEvents={hotEvents} isLoading={loadingEvents} onSelectEvent={handleSelectEvent} />
+              <SearchScreen events={events} hotEvents={hotEvents} isLoading={loadingEvents} isLoadingHot={loadingHot} onSelectEvent={handleSelectEvent} />
             )}
           </main>
 

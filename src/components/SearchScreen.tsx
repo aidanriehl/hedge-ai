@@ -11,6 +11,7 @@ interface Props {
   events: KalshiEvent[];
   hotEvents: KalshiEvent[];
   isLoading: boolean;
+  isLoadingHot?: boolean;
   onSelectEvent: (event: KalshiEvent) => void;
 }
 
@@ -80,7 +81,7 @@ function getIconForEvent(title: string, category: string) {
   return key ? CATEGORY_CONFIG[key] : { icon: Globe, color: "text-muted-foreground", bg: "bg-muted" };
 }
 
-export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Props) {
+export function SearchScreen({ events, hotEvents, isLoading, isLoadingHot, onSelectEvent }: Props) {
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
@@ -125,21 +126,13 @@ export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Pr
       <div className="relative max-w-md mx-auto">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder={isLoading ? "Loading..." : "Search bet or topic"}
+          placeholder={isLoading ? "Loading bets..." : "Search bet or topic"}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="pl-10 h-12 text-[15px] bg-card border border-border rounded-2xl placeholder:text-muted-foreground"
           disabled={isLoading}
         />
       </div>
-
-      {isLoading && (
-        <div className="space-y-2">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-14 bg-muted rounded-xl animate-pulse" />
-          ))}
-        </div>
-      )}
 
       {!isLoading && query && (
         <>
@@ -188,7 +181,19 @@ export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Pr
         </>
       )}
 
-      {!isLoading && !query && displayedHotEvents.length > 0 && (
+      {!query && (isLoadingHot ? (
+        <div className="pt-2">
+          <div className="flex items-center gap-2 mb-3">
+            <Flame className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Hottest Bets Right Now</h3>
+          </div>
+          <div className="space-y-1.5">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-14 bg-muted rounded-xl animate-pulse" />
+            ))}
+          </div>
+        </div>
+      ) : displayedHotEvents.length > 0 && (
         <div className="pt-2">
           <div className="flex items-center gap-2 mb-3">
             <Flame className="h-4 w-4 text-primary" />
@@ -230,7 +235,7 @@ export function SearchScreen({ events, hotEvents, isLoading, onSelectEvent }: Pr
             })}
           </div>
         </div>
-      )}
+      ))}
     </div>
   );
 }
