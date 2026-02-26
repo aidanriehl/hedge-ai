@@ -261,19 +261,7 @@ Return ONLY valid JSON:
       );
     }
 
-    // Check cache first
-    if (eventTicker) {
-      const cached = await getCachedResearch(eventTicker);
-      if (cached) {
-        console.log(`Cache HIT (research) for ${eventTicker}, expires ${cached.expires_at}`);
-        const result = cached.research as any;
-        result.imageUrl = cached.image_url;
-        result.cacheMeta = { hit: true, steps: cached.steps ?? [] };
-        return new Response(JSON.stringify(result), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-    }
+
 
     const systemPrompt = `You are a prediction market analyst. Write for normal people — no jargon, no filler, no fancy words. 8th-grade reading level. Short sentences.
 

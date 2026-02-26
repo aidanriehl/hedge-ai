@@ -173,27 +173,18 @@ const Index = () => {
       // Await research first — don't wait for market
       const result = await researchPromise;
 
-      // If backend returned cached steps, use them and skip progress animation
-      if (result.cacheMeta?.hit) {
-        setResearching(false);
-        setResearch(result);
-        if (result.cacheMeta.steps?.length) {
-          setResearchSteps(result.cacheMeta.steps);
-        }
-      } else {
-        // Non-cached: fire steps request now
-        supabase.functions.invoke("bet-research", {
-          body: { generateSteps: true, eventTitle: event.title, eventCategory: event.category || "General", eventTicker: event.event_ticker },
-        }).then(({ data }) => {
-          if (data?.steps) setResearchSteps(data.steps);
-        }).catch(() => {});
+      // Fire steps request for progress animation
+      supabase.functions.invoke("bet-research", {
+        body: { generateSteps: true, eventTitle: event.title, eventCategory: event.category || "General", eventTicker: event.event_ticker },
+      }).then(({ data }) => {
+        if (data?.steps) setResearchSteps(data.steps);
+      }).catch(() => {});
 
-        setResearch(result);
-        setResearching(false);
-      }
+      setResearch(result);
+      setResearching(false);
 
       // Update in-memory cache immediately with research
-      const cacheEntry: CachedResearch = { research: result, marketPrice: undefined, marketCandidates: [], steps: result.cacheMeta?.steps || [] };
+      const cacheEntry: CachedResearch = { research: result, marketPrice: undefined, marketCandidates: [], steps: [] };
       researchCache.current.set(event.event_ticker, cacheEntry);
       saveToLocalStorage(event.event_ticker, cacheEntry);
 
