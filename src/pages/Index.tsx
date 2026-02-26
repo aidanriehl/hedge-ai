@@ -154,7 +154,6 @@ const Index = () => {
 
     try {
       const [result, marketData] = await Promise.all([researchPromise, marketPromise]);
-      await stepsPromise;
       setResearch(result);
       researchCache.current.set(event.event_ticker, { research: result, marketPrice: marketData.price, marketCandidates: marketData.candidates, steps: capturedSteps });
     } catch (err: any) {
@@ -249,7 +248,7 @@ const Index = () => {
                 <p className="text-sm text-muted-foreground mt-1">Market: <span className="font-semibold text-foreground">{Math.round(marketPrice * 100)}¢ Yes</span></p>
               )}
             </div>
-            {researching && <ResearchProgress steps={researchSteps} isComplete={!!research} />}
+            {researching && researchSteps.length > 0 && <ResearchProgress steps={researchSteps} isComplete={!!research} />}
             {research && (
               <>
                 <ResearchResultView research={research} marketPrice={marketPrice} marketCandidates={marketCandidates} />
