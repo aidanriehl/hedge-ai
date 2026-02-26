@@ -168,7 +168,7 @@ export function SearchScreen({ events, hotEvents, isLoading, isLoadingHot, onSel
                         <span className="text-[11px] text-muted-foreground">{event.category}</span>
                         {yesPrice != null && (
                           <span className="text-[11px] font-semibold text-primary">
-                            {candidateName ? `${candidateName} · ${yesPrice}%` : `Yes · ${yesPrice}% on Kalshi`}
+                            {candidateName ? `${candidateName} · ${yesPrice}%` : `Yes · ${yesPrice}%`}
                           </span>
                         )}
                       </div>
@@ -225,7 +225,7 @@ export function SearchScreen({ events, hotEvents, isLoading, isLoadingHot, onSel
                         <span className="text-[11px] text-muted-foreground">{event.category}</span>
                         {yesPrice != null && (
                           <span className="text-[11px] font-semibold text-primary">
-                            {candidateName ? `${candidateName} · ${yesPrice}%` : `Yes · ${yesPrice}% on Kalshi`}
+                            {candidateName ? `${candidateName} · ${yesPrice}%` : `Yes · ${yesPrice}%`}
                           </span>
                         )}
                     </div>
