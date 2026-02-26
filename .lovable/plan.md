@@ -1,31 +1,50 @@
 
+Implementation plan
 
-## Problem
+1) Fix the unwanted “Starting research...” pill at its source  
+- File: `src/components/ResearchProgress.tsx`  
+- Remove the special `steps.length === 0` render block entirely.  
+- If `steps` is empty, render nothing (so no random placeholder pill appears).
 
-The AI-generated image is displayed with `h-48 object-cover`, which crops the image to fit a fixed 192px height. Since the generated image has an unknown aspect ratio (likely square or portrait), important content like faces gets cropped out.
+2) Prevent the progress component from mounting before real steps exist  
+- File: `src/pages/Index.tsx`  
+- Change render condition from:
+  - `researching && <ResearchProgress ... />`
+  to:
+  - `researching && researchSteps.length > 0 && <ResearchProgress ... />`
+- This guarantees non-cached bets won’t show a fake initial pill while steps are still being generated.
 
-## Solution
+3) Remove the intentional “hold on last step” behavior  
+- File: `src/components/ResearchProgress.tsx`  
+- Current logic caps progress at `steps.length - 1`, which intentionally leaves the last row spinning until research finishes.  
+- Update interval progression to advance through `steps.length` so the last step gets completed on the same cadence as every other step (1.4s), instead of stalling.
 
-Two changes needed:
+4) Keep timing consistent across all pills  
+- File: `src/components/ResearchProgress.tsx`  
+- Preserve a single fixed interval (`1400ms`) for each transition.  
+- Ensure state math still renders exactly one active spinner while advancing, then all checks once the sequence completes.
 
-### 1. Generate images in the correct aspect ratio
-Update the image generation prompt in `supabase/functions/bet-research/index.ts` to request a **landscape 16:9 aspect ratio** image, matching the wide display area. This ensures the generated image naturally fits without cropping important content.
+5) Eliminate avoidable end-of-sequence waiting caused by step-fetch coupling (hardening)  
+- File: `src/pages/Index.tsx`  
+- Stop gating final `setResearch(result)` on steps fetch completion (remove strict dependency on `await stepsPromise` before showing result).  
+- Steps are UX-only and should not delay final research rendering.
 
-**Line ~411**: Change the prompt from:
-```
-Generate a photorealistic image: ${research.imagePrompt}. High quality, editorial style.
-```
-to:
-```
-Generate a photorealistic image in wide landscape 16:9 aspect ratio: ${research.imagePrompt}. High quality, editorial style, wide horizontal composition. Make sure faces and key subjects are fully visible and centered.
-```
+Technical details
 
-### 2. Use `object-contain` or keep `object-cover` with `object-top`
-In `src/components/ResearchResult.tsx` (line 62), change the image class to use `object-cover object-top` so that even if an image isn't perfectly 16:9, we bias toward showing the top (where faces typically are) rather than center-cropping:
+- Root cause #1 (first screenshot):  
+  `ResearchProgress` explicitly renders a fallback pill when `steps.length === 0`:
+  - text: “Starting research...”
+- Root cause #2 (second screenshot):  
+  `ResearchProgress` intentionally blocks final completion with:
+  - `maxComplete = steps.length - 1`
+  - “Don’t mark the last step as done until research is actually complete”
+  This is exactly why the last pill appears stuck longer than others.
+- Secondary latency amplifier:  
+  In `Index.tsx`, research result rendering currently waits for steps request completion, which can add extra end delay unrelated to core research readiness.
 
-```
-className="w-full h-48 object-cover object-top"
-```
+Acceptance criteria after implementation
 
-This two-pronged approach ensures: (a) new images are generated in the right shape, and (b) display always favors showing the top/face area.
-
+- Non-cached event open: no “Starting research...” pill appears at any time.  
+- Progress sequence: every step, including the last, advances at the same 1.4s cadence.  
+- No prolonged “last pill spinning” pause before result display.  
+- Cached event behavior remains instant and unchanged.
