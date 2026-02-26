@@ -44,6 +44,22 @@ const Index = () => {
   const { toast } = useToast();
 
   useEffect(() => { loadEvents(); }, []);
+
+  // Auto-refresh market prices every 60 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchAllKalshiEventsWithMarkets()
+        .then((enriched) => {
+          console.log(`Auto-refresh: updated ${enriched.length} events`);
+          setEvents((prev) => {
+            const enrichedMap = new Map(enriched.map((e) => [e.event_ticker, e]));
+            return prev.map((e) => enrichedMap.get(e.event_ticker) || e);
+          });
+        })
+        .catch((err) => console.error("Auto-refresh failed:", err));
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
   useEffect(() => { localStorage.setItem("betscope_saved", JSON.stringify([...savedTickers])); }, [savedTickers]);
 
   async function loadEvents() {
