@@ -1,16 +1,8 @@
 
 
-## Fix: Add more bottom padding to chat input bar
+## Remove "Wrapping up..." message
 
-**File**: `src/components/ResearchChat.tsx`, line 152
+**File**: `src/components/ResearchProgress.tsx`
 
-Change `pb-4` to `pb-8` on the fixed input container so the chat bar isn't cut off at the bottom of the screen.
-
-```
-// Before
-<div className="... px-4 pt-2 pb-4 safe-bottom">
-
-// After
-<div className="... px-4 pt-2 pb-8 safe-bottom">
-```
+Delete the `allDone` block that renders "Wrapping up..." after all steps complete. Once all steps have checkmarks, just show nothing — the research result will appear on its own.
 
