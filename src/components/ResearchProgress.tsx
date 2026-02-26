@@ -3,9 +3,10 @@ import { useEffect, useState } from "react";
 
 interface Props {
   steps: string[];
+  isComplete?: boolean;
 }
 
-export function ResearchProgress({ steps }: Props) {
+export function ResearchProgress({ steps, isComplete = false }: Props) {
   const [completedCount, setCompletedCount] = useState(0);
 
   useEffect(() => {
@@ -14,9 +15,11 @@ export function ResearchProgress({ steps }: Props) {
     
     const interval = setInterval(() => {
       setCompletedCount((prev) => {
-        if (prev >= steps.length) {
+        // Don't mark the last step as done until research is actually complete
+        const maxComplete = steps.length - 1;
+        if (prev >= maxComplete) {
           clearInterval(interval);
-          return prev;
+          return maxComplete;
         }
         return prev + 1;
       });
@@ -24,13 +27,20 @@ export function ResearchProgress({ steps }: Props) {
     return () => clearInterval(interval);
   }, [steps]);
 
-  const allDone = completedCount >= steps.length;
+  // When research completes, mark all steps done
+  const effectiveCompleted = isComplete ? steps.length : completedCount;
 
   return (
     <div className="py-6 space-y-3">
+      {steps.length === 0 && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-card rounded-xl border border-border animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <Loader2 className="h-5 w-5 text-primary animate-spin flex-shrink-0" />
+          <span className="text-sm text-foreground font-medium">Starting research...</span>
+        </div>
+      )}
       {steps.map((step, i) => {
-        if (i > completedCount) return null;
-        const isDone = i < completedCount;
+        if (i > effectiveCompleted) return null;
+        const isDone = i < effectiveCompleted;
         return (
           <div
             key={i}
