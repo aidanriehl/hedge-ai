@@ -15,9 +15,10 @@ export function ResearchProgress({ steps, isComplete = false }: Props) {
     
     const interval = setInterval(() => {
       setCompletedCount((prev) => {
-        if (prev >= steps.length) {
+        // Stop one short of the last step — last step only completes when isComplete is true
+        if (prev >= steps.length - 1) {
           clearInterval(interval);
-          return steps.length;
+          return steps.length - 1;
         }
         return prev + 1;
       });
