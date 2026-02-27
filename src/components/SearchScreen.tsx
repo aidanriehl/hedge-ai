@@ -85,7 +85,7 @@ export function SearchScreen({ events, hotEvents, isLoading, isLoadingHot, onSel
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
-    if (!query) return [];
+    if (!query || query.trim().length < 2) return [];
     const q = query.toLowerCase();
     const searchTerms = [q];
     for (const [key, synonyms] of Object.entries(SEARCH_SYNONYMS)) {
