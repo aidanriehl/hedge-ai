@@ -399,49 +399,53 @@ Give me the key factors (one short bullet each with specific data) and your hone
       );
     }
 
-    // Generate image if we got an imagePrompt
-    let imageUrl = null;
-    if (research.imagePrompt) {
-      try {
-        const imgResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash-image",
-            messages: [
-              { role: "user", content: `Generate a photorealistic image in wide landscape 16:9 aspect ratio: ${research.imagePrompt}. High quality, editorial style, wide horizontal composition. Make sure faces and key subjects are fully visible and centered.` },
-            ],
-            modalities: ["image", "text"],
-          }),
-        });
-
-        if (imgResponse.ok) {
-          const imgData = await imgResponse.json();
-          imageUrl = imgData.choices?.[0]?.message?.images?.[0]?.image_url?.url || null;
-        }
-      } catch (imgErr) {
-        console.error("Image generation failed (non-fatal):", imgErr);
-      }
-    }
-
     // Extract TTL and clean up response
     const cacheTTLHours = research.cacheTTLHours || 24;
+    const imagePrompt = research.imagePrompt;
     delete research.cacheTTLHours;
     delete research.imagePrompt;
-    research.imageUrl = imageUrl;
+    research.imageUrl = null; // Will be filled async
 
-    // Cache the result — preserve existing steps
+    // Cache research immediately (without image), preserve existing steps
     if (eventTicker) {
       const researchToCache = { ...research };
-      delete researchToCache.imageUrl; // stored separately
+      delete researchToCache.imageUrl;
       const sb = getSupabaseAdmin();
       const { data: existingRow } = await sb.from("research_cache").select("steps").eq("event_ticker", eventTicker).maybeSingle();
       const existingSteps = existingRow?.steps ?? null;
-      upsertCache(eventTicker, researchToCache, existingSteps, imageUrl, cacheTTLHours)
+      upsertCache(eventTicker, researchToCache, existingSteps, null, cacheTTLHours)
         .catch(err => console.error("Cache upsert failed (non-fatal):", err));
+
+      // Fire-and-forget image generation — don't block the response
+      if (imagePrompt && LOVABLE_API_KEY) {
+        (async () => {
+          try {
+            const imgResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "google/gemini-2.5-flash-image",
+                messages: [
+                  { role: "user", content: `Generate a photorealistic image in wide landscape 16:9 aspect ratio: ${imagePrompt}. High quality, editorial style, wide horizontal composition. Make sure faces and key subjects are fully visible and centered.` },
+                ],
+                modalities: ["image", "text"],
+              }),
+            });
+            if (imgResponse.ok) {
+              const imgData = await imgResponse.json();
+              const imageUrl = imgData.choices?.[0]?.message?.images?.[0]?.image_url?.url || null;
+              if (imageUrl) {
+                await sb.from("research_cache").update({ image_url: imageUrl }).eq("event_ticker", eventTicker);
+              }
+            }
+          } catch (imgErr) {
+            console.error("Background image generation failed:", imgErr);
+          }
+        })();
+      }
     }
 
     return new Response(JSON.stringify(research), {
