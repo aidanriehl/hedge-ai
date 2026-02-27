@@ -139,7 +139,15 @@ const Index = () => {
     setResearching(true);
     setMarketPrice(undefined);
     setMarketCandidates([]);
-    setResearchSteps([]);
+    // Show placeholder steps INSTANTLY — replaced when real ones arrive
+    setResearchSteps([
+      "Gathering relevant data",
+      "Analyzing key factors",
+      "Checking recent news",
+      "Evaluating historical patterns",
+      "Assessing current conditions",
+      "Forming probability estimate",
+    ]);
 
     // Fire market fetch in background — never blocks research display
     const marketPromise = fetchEventMarkets(event.event_ticker).then((details) => {
@@ -173,7 +181,7 @@ const Index = () => {
     supabase.functions.invoke("bet-research", {
       body: { generateSteps: true, eventTitle: event.title, eventCategory: event.category || "General", eventTicker: event.event_ticker },
     }).then(({ data }) => {
-      if (data?.steps) setResearchSteps(data.steps);
+      if (data?.steps) setResearchSteps(data.steps.slice(0, 6));
     }).catch(() => {});
 
     try {
