@@ -85,14 +85,15 @@ export function SearchScreen({ events, hotEvents, isLoading, isLoadingHot, onSel
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
-    if (!query || query.trim().length < 2) return [];
-    const q = query.toLowerCase();
+    if (!query) return [];
+    const q = query.toLowerCase().trim();
+    if (!q) return [];
     const searchTerms = [q];
     for (const [key, synonyms] of Object.entries(SEARCH_SYNONYMS)) {
       if (q.includes(key)) searchTerms.push(...synonyms);
       if (synonyms.some(s => q.includes(s))) searchTerms.push(key);
     }
-    return events.filter((e) =>
+    const matches = events.filter((e) =>
       searchTerms.some(term =>
         e.title.toLowerCase().includes(term) ||
         e.category?.toLowerCase().includes(term) ||
@@ -100,6 +101,18 @@ export function SearchScreen({ events, hotEvents, isLoading, isLoadingHot, onSel
         e.markets?.some((m) => m.title?.toLowerCase().includes(term))
       )
     );
+    // Sort by relevance: title starts with query first, then word-boundary matches, then rest
+    return matches.sort((a, b) => {
+      const aTitle = a.title.toLowerCase();
+      const bTitle = b.title.toLowerCase();
+      const aStarts = aTitle.startsWith(q) ? 0 : 1;
+      const bStarts = bTitle.startsWith(q) ? 0 : 1;
+      if (aStarts !== bStarts) return aStarts - bStarts;
+      // Word boundary match (query appears after a space)
+      const aWord = aTitle.includes(` ${q}`) ? 0 : 1;
+      const bWord = bTitle.includes(` ${q}`) ? 0 : 1;
+      return aWord - bWord;
+    });
   }, [events, query]);
 
   const displayedHotEvents = useMemo(() => {
