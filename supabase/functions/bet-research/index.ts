@@ -261,6 +261,36 @@ Return ONLY valid JSON:
       );
     }
 
+    // Fire image generation in PARALLEL with research using event title
+    let imagePromise: Promise<string | null> = Promise.resolve(null);
+    if (LOVABLE_API_KEY) {
+      imagePromise = (async () => {
+        try {
+          const imgResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-flash-image",
+              messages: [
+                { role: "user", content: `Generate a photorealistic image in wide landscape 16:9 aspect ratio related to: "${eventTitle}" (category: ${eventCategory || "General"}). High quality, editorial style, wide horizontal composition. Make sure faces and key subjects are fully visible and centered.` },
+              ],
+              modalities: ["image", "text"],
+            }),
+          });
+          if (imgResponse.ok) {
+            const imgData = await imgResponse.json();
+            return imgData.choices?.[0]?.message?.images?.[0]?.image_url?.url || null;
+          }
+        } catch (imgErr) {
+          console.error("Parallel image generation failed:", imgErr);
+        }
+        return null;
+      })();
+    }
+
 
 
     const systemPrompt = `You are a prediction market analyst. Write like you're texting a smart friend — casual, clear, zero fancy words. 5th-grade vocabulary. Short punchy sentences. If a 12-year-old wouldn't say it, rewrite it.
@@ -401,51 +431,22 @@ Give me the key factors (one short bullet each with specific data) and your hone
 
     // Extract TTL and clean up response
     const cacheTTLHours = research.cacheTTLHours || 24;
-    const imagePrompt = research.imagePrompt;
     delete research.cacheTTLHours;
     delete research.imagePrompt;
-    research.imageUrl = null; // Will be filled async
 
-    // Cache research immediately (without image), preserve existing steps
+    // Await image that was generated in parallel
+    const imageUrl = await imagePromise;
+    research.imageUrl = imageUrl;
+
+    // Cache research with image
     if (eventTicker) {
       const researchToCache = { ...research };
       delete researchToCache.imageUrl;
       const sb = getSupabaseAdmin();
       const { data: existingRow } = await sb.from("research_cache").select("steps").eq("event_ticker", eventTicker).maybeSingle();
       const existingSteps = existingRow?.steps ?? null;
-      upsertCache(eventTicker, researchToCache, existingSteps, null, cacheTTLHours)
+      upsertCache(eventTicker, researchToCache, existingSteps, imageUrl, cacheTTLHours)
         .catch(err => console.error("Cache upsert failed (non-fatal):", err));
-
-      // Fire-and-forget image generation — don't block the response
-      if (imagePrompt && LOVABLE_API_KEY) {
-        (async () => {
-          try {
-            const imgResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${LOVABLE_API_KEY}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                model: "google/gemini-2.5-flash-image",
-                messages: [
-                  { role: "user", content: `Generate a photorealistic image in wide landscape 16:9 aspect ratio: ${imagePrompt}. High quality, editorial style, wide horizontal composition. Make sure faces and key subjects are fully visible and centered.` },
-                ],
-                modalities: ["image", "text"],
-              }),
-            });
-            if (imgResponse.ok) {
-              const imgData = await imgResponse.json();
-              const imageUrl = imgData.choices?.[0]?.message?.images?.[0]?.image_url?.url || null;
-              if (imageUrl) {
-                await sb.from("research_cache").update({ image_url: imageUrl }).eq("event_ticker", eventTicker);
-              }
-            }
-          } catch (imgErr) {
-            console.error("Background image generation failed:", imgErr);
-          }
-        })();
-      }
     }
 
     return new Response(JSON.stringify(research), {
