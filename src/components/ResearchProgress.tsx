@@ -33,7 +33,7 @@ export function ResearchProgress({ steps, isComplete = false }: Props) {
         const next = prev + 1;
         return next;
       });
-    }, 2500);
+    }, 2000);
     return () => clearInterval(interval);
   }, [steps]);
 

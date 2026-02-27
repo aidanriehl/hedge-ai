@@ -177,12 +177,7 @@ const Index = () => {
     // Fire research request
     const researchPromise = runBetResearch(event.title, event.category || "General", event.sub_title || "", undefined, undefined, event.event_ticker);
 
-    // Fire steps request in parallel (for progress animation while research loads)
-    supabase.functions.invoke("bet-research", {
-      body: { generateSteps: true, eventTitle: event.title, eventCategory: event.category || "General", eventTicker: event.event_ticker },
-    }).then(({ data }) => {
-      if (data?.steps) setResearchSteps(data.steps.slice(0, 6));
-    }).catch(() => {});
+    // Placeholder steps are used directly — no generateSteps API call to avoid animation reset
 
     try {
       // Await research first — don't wait for market
